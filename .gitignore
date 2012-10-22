@@ -1,0 +1,6 @@
+/.eunit
+/c_src/*.o
+/ebin
+/priv
+*~
+/c_src/*.dSYM
