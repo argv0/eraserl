@@ -3,7 +3,7 @@ BINDIR=${PREFIX}/bin
 LIBDIR=${PREFIX}/lib
 INCDIR=${PREFIX}/include
 
-all: lib/libJerasure.so
+all: lib/libJerasure.a
 	make -C Examples
 
 clean:
@@ -11,10 +11,10 @@ clean:
 	make -C Examples clean
 	rm -rf include
 
-install: lib/libJerasure.so
-	cp -P lib/libJerasure.so* ${LIBDIR}
-	mkdir -p ${INCDIR}/jerasure
-	cp include/* ${INCDIR}/jerasure
+#install: lib/libJerasure.so
+#	cp -P lib/libJerasure.so* ${LIBDIR}
+#	mkdir -p ${INCDIR}/jerasure
+#	cp include/* ${INCDIR}/jerasure
 
-lib/libJerasure.so:
+lib/libJerasure.a:
 	make -C src

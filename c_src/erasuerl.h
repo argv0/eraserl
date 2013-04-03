@@ -25,6 +25,8 @@ extern "C" {
 #include "erl_nif_compat.h"
 
 ERL_NIF_TERM erasuerl_new(ErlNifEnv*, int, const ERL_NIF_TERM[]);
+ERL_NIF_TERM erasuerl_encode(ErlNifEnv*, int, const ERL_NIF_TERM[]);
+ERL_NIF_TERM erasuerl_decode(ErlNifEnv*, int, const ERL_NIF_TERM[]);
 
 
 } // extern "C"

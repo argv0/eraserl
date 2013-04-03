@@ -4,3 +4,4 @@
 /priv
 *~
 /c_src/*.dSYM
+/c_src/Jerasure/Examples/*.dSYM

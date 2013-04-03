@@ -7,5 +7,5 @@ compile:
 test: compile 
 	./rebar eunit
 
-clean: test-clean
+clean:
 	./rebar clean

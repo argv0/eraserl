@@ -17,7 +17,7 @@
 %%
 %% -------------------------------------------------------------------
 -module(erasuerl).
--export([new/0]).
+-export([new/0, encode/2, decode/3, simple_test/0]).
 -on_load(init/0).
 
 -define(nif_stub, nif_stub_error(?LINE)).
@@ -43,7 +43,16 @@ init() ->
 new() ->
     ?nif_stub.
 
+encode(_EC, _Bin) ->
+    ?nif_stub.
+
+decode(_EC, _Meta, _BinList) ->
+    ?nif_stub.
 
 
-
+simple_test() ->
+    {ok, EC} = erasuerl:new(),
+    {ok, Bin} = file:read_file("/usr/share/dict/words"),
+    {MD, BinList} = erasuerl:encode(EC, Bin),
+    erasuerl:decode(EC, MD, BinList).
     
