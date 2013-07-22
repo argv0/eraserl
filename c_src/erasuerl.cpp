@@ -24,6 +24,7 @@ extern "C" {
 #include "Jerasure/include/jerasure.h"
 }
 #include <string.h>
+#include <stdlib.h>
 #include <stdio.h>
 #include <stdint.h>
 #include <fcntl.h>
@@ -60,6 +61,8 @@ static ERL_NIF_TERM ATOM_M;
 static ERL_NIF_TERM ATOM_W;
 static ERL_NIF_TERM ATOM_SIZE;
 static ERL_NIF_TERM ATOM_PACKETSIZE;
+static ERL_NIF_TERM ERROR_ENCODE;
+static ERL_NIF_TERM ERROR_DECODE;
 
 static ErlNifFunc nif_funcs[] =
 {
@@ -133,35 +136,32 @@ ERL_NIF_TERM erasuerl_encode(ErlNifEnv* env, int argc, const ERL_NIF_TERM argv[]
     {
         int packetsize = 64;
         int size = item.size;
-        
         int newsize = size;
+        char *data[handle->k];
+        char *coding[handle->m];
+        ERL_NIF_TERM coded[handle->m];
+        ERL_NIF_TERM dataout[handle->k];
+
+        /* round up to nearest blocksize multiple */
         if (size%((handle->k)*(handle->w)*packetsize*sizeof(int)) != 0) { 
             while (newsize%((handle->k)*(handle->w)*packetsize*sizeof(int)) != 0) 
                 newsize++;
         }
         int blocksize = newsize/handle->k;
-        
-        char **data = (char **)malloc(sizeof(char*)*handle->k);
-        char **coding = (char **)malloc(sizeof(char*)*handle->m);
-        char *block = (char *)malloc(sizeof(char)*newsize);
-
-        for (int i = 0; i < handle->m; i++) {
-            coding[i] = (char *)malloc(sizeof(char)*blocksize);
-            if (coding[i] == NULL) { perror("malloc"); exit(1); }
-        }
+        char block[newsize];
 
         memset(block, '0', newsize);
         memcpy(block, item.data, item.size);
 
-
         for (int i=0; i < handle->k; i++)  
             data[i] = block+(i*blocksize);
 
+        /* allocate code buffers */
+        for (int i = 0; i < handle->m; i++) 
+            coding[i] = (char *)calloc(blocksize, sizeof(char));
+
         jerasure_schedule_encode(handle->k, handle->m, handle->w, handle->schedule, 
                                  data, coding, blocksize, packetsize);
-
-        ERL_NIF_TERM coded[handle->m];
-        ERL_NIF_TERM dataout[handle->k];
 
         for (int i=0; i < handle->k; i++)
         {
@@ -179,9 +179,6 @@ ERL_NIF_TERM erasuerl_encode(ErlNifEnv* env, int argc, const ERL_NIF_TERM argv[]
             coded[i] = enif_make_binary(env, &b);
         }
         
-        free(data);
-        free(coding);
-        free(block);
         ERL_NIF_TERM metadata = enif_make_list5(env,
                        enif_make_tuple2(env, ATOM_SIZE, enif_make_int(env, size)),
                        enif_make_tuple2(env, ATOM_K, enif_make_int(env, handle->k)),
@@ -208,14 +205,14 @@ ERL_NIF_TERM erasuerl_decode(ErlNifEnv* env, int argc, const ERL_NIF_TERM argv[]
     {
         decode_options opts;
         fold(env, argv[1], parse_decode_option, opts);
-        int *erased = (int *)malloc(sizeof(int)*(h->k+h->m));
-        for (int i=0; i< h->k+h->m; i++)
-            erased[i] = 0;
-        int *erasures = (int *)malloc(sizeof(int)*(h->k+h->m));
-	char **data = (char **)malloc(sizeof(char *)*h->k);
-	char **coding = (char **)malloc(sizeof(char *)*h->m);
-        int blocksize;
-        int numerased = 0;
+
+        int erased[(h->k)+(h->m)];
+        int erasures[(h->k)+(h->m)];
+        char *data[h->k];
+	char *coding[h->m];
+        unsigned int blocksize;
+        unsigned int numerased = 0;
+        for (int i=0; i< h->k+h->m; i++) erased[i] = 0;
 
         ERL_NIF_TERM head, tail, list = argv[2];
         int nelems = 0;
@@ -228,7 +225,7 @@ ERL_NIF_TERM erasuerl_decode(ErlNifEnv* env, int argc, const ERL_NIF_TERM argv[]
             }
             else { 
                 blocksize = bin.size;
-                data[nelems] = (char *)malloc(sizeof(char)*blocksize);
+                data[nelems] = (char *)calloc(1, sizeof(char)*blocksize);
                 memcpy(data[nelems], bin.data, blocksize);
             }
             list = tail;
@@ -244,27 +241,23 @@ ERL_NIF_TERM erasuerl_decode(ErlNifEnv* env, int argc, const ERL_NIF_TERM argv[]
                 numerased++;
             }
             else { 
-                coding[nelems] = (char *)malloc(sizeof(char)*blocksize);
+                coding[nelems] = (char *)calloc(1, sizeof(char)*blocksize);
                 memcpy(coding[nelems], bin.data, blocksize);
             }
             nelems++;
             list = tail;
         }
         for (int i=0; i < numerased; i++) 
-        {
-            if (erasures[i] < h->k) {
-                data[erasures[i]] = (char *)malloc(blocksize);
-                bzero(data[erasures[i]], blocksize);
-            }
-            else {
-                coding[erasures[i]-h->k] = (char *)malloc(blocksize);
-            }
-        }
+            if (erasures[i] < h->k) 
+                data[erasures[i]] = (char *)calloc(1, blocksize);
+            else 
+                coding[erasures[i]-h->k] = (char *)calloc(1, blocksize);
         erasures[numerased] = -1;
         int i = jerasure_schedule_decode_lazy(h->k, h->m, h->w, h->bitmatrix, erasures,
                                               data, coding, blocksize, opts.packetsize, 1);
 
         if (i == -1) { 
+            
             return ATOM_ERROR;
         }
         ERL_NIF_TERM decoded[h->k];
@@ -298,10 +291,10 @@ ERL_NIF_TERM erasuerl_decode(ErlNifEnv* env, int argc, const ERL_NIF_TERM argv[]
             decoded[i] = enif_make_binary(env, &b);
             foo = 0;
         }
-        free(data);
-        free(coding);
-        free(erasures);
-        free(erased);
+        for (int i=0;i<h->k;i++)
+            if (data[i]) free(data[i]);
+        for (int i=0;i<h->m;i++)
+            if (coding[i]) free(coding[i]);
         return enif_make_list_from_array(env, decoded, h->k);
     }
     return enif_make_badarg(env);
