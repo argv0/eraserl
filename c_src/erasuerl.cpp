@@ -261,6 +261,7 @@ ERL_NIF_TERM erasuerl_decode(ErlNifEnv* env, int argc, const ERL_NIF_TERM argv[]
             if (!enif_inspect_binary(env, head, &bin)) {
                 erasures[h->k+nelems] = 1;
                 erasures[numerased] = h->k+nelems;
+                numerased++;
             }
             else { 
                 coding[nelems] = (char *)malloc(sizeof(char)*blocksize);

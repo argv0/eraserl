@@ -54,13 +54,11 @@ simple_test() ->
     {ok, EC} = erasuerl:new(),
     {ok, Bin} = file:read_file("/usr/share/dict/words"),
     {MD, KBins, MBins} = erasuerl:encode(EC, Bin),
-    ?debugFmt("~p~n", [length(KBins)]),
     [K1, K2, K3, K4, K5, K6, K7, K8, K9] = KBins,
     [M1, M2, M3, M4] = MBins,
-    R = [file:write_file(integer_to_list(I), B) || {B,I} <- lists:zip(KBins, lists:seq(1, length(KBins)))],
-    KBins2 = [undefined, K2, K3, K4, K5, K6, K7, K8, K9],
-    ?debugFmt("~p~n", [R]),
+    KBins2 = [undefined, undefined, undefined, K4, K5, K6, K7, K8, K9],
+    MBins2 = [undefined, M2, M3, M4],
     {ok, EC2} = erasuerl:new(),
-    Bin = iolist_to_binary(erasuerl:decode(EC2, MD, KBins2, MBins)).
+    Bin = iolist_to_binary(erasuerl:decode(EC, MD, KBins2, MBins2)).
 
 
