@@ -38,7 +38,6 @@ init() ->
                end,
      erlang:load_nif(filename:join(PrivDir, ?MODULE), 0).
 
-
 -spec new() -> {ok, binary()}.
 new() ->
     ?nif_stub.
@@ -52,13 +51,12 @@ decode(_EC, _Meta, _KList, _MList) ->
 
 simple_test() ->
     {ok, EC} = erasuerl:new(),
-    {ok, Bin} = file:read_file("/usr/share/dict/words"),
+    {ok, Bin} = file:read_file("/etc/hosts"),
     {MD, KBins, MBins} = erasuerl:encode(EC, Bin),
     [K1, K2, K3, K4, K5, K6, K7, K8, K9] = KBins,
     [M1, M2, M3, M4] = MBins,
     KBins2 = [undefined, undefined, undefined, K4, K5, K6, K7, K8, K9],
     MBins2 = [undefined, M2, M3, M4],
-    {ok, EC2} = erasuerl:new(),
     Bin = iolist_to_binary(erasuerl:decode(EC, MD, KBins2, MBins2)).
 
 
