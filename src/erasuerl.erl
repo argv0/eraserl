@@ -17,16 +17,15 @@
 %%
 %% -------------------------------------------------------------------
 -module(erasuerl).
--export([new/0, encode/2, decode/3, simple_test/0]).
+-export([new/0, encode/2, decode/4, simple_test/0]).
 -on_load(init/0).
+
+-include_lib("eunit/include/eunit.hrl").
+
 
 -define(nif_stub, nif_stub_error(?LINE)).
 nif_stub_error(Line) ->
     erlang:nif_error({nif_not_loaded,module,?MODULE,line,Line}).
-
--ifdef(TEST).
--include_lib("eunit/include/eunit.hrl").
--endif.
 
 init() ->
     PrivDir = case code:priv_dir(?MODULE) of
@@ -36,8 +35,9 @@ init() ->
                       filename:join(AppPath, "priv");
                   Path ->
                       Path
-              end,
-    erlang:load_nif(filename:join(PrivDir, ?MODULE), 0).
+               end,
+     erlang:load_nif(filename:join(PrivDir, ?MODULE), 0).
+
 
 -spec new() -> {ok, binary()}.
 new() ->
@@ -46,13 +46,21 @@ new() ->
 encode(_EC, _Bin) ->
     ?nif_stub.
 
-decode(_EC, _Meta, _BinList) ->
+decode(_EC, _Meta, _KList, _MList) ->
     ?nif_stub.
 
 
 simple_test() ->
     {ok, EC} = erasuerl:new(),
     {ok, Bin} = file:read_file("/usr/share/dict/words"),
-    {MD, BinList} = erasuerl:encode(EC, Bin),
-    erasuerl:decode(EC, MD, BinList).
-    
+    {MD, KBins, MBins} = erasuerl:encode(EC, Bin),
+    ?debugFmt("~p~n", [length(KBins)]),
+    [K1, K2, K3, K4, K5, K6, K7, K8, K9] = KBins,
+    [M1, M2, M3, M4] = MBins,
+    R = [file:write_file(integer_to_list(I), B) || {B,I} <- lists:zip(KBins, lists:seq(1, length(KBins)))],
+    KBins2 = [undefined, K2, K3, K4, K5, K6, K7, K8, K9],
+    ?debugFmt("~p~n", [R]),
+    {ok, EC2} = erasuerl:new(),
+    Bin = iolist_to_binary(erasuerl:decode(EC2, MD, KBins2, MBins)).
+
+
