@@ -57,6 +57,8 @@ simple_test() ->
     [M1, M2, M3, M4] = MBins,
     KBins2 = [undefined, undefined, undefined, K4, K5, K6, K7, K8, K9],
     MBins2 = [undefined, M2, M3, M4],
-    Bin = iolist_to_binary(erasuerl:decode(EC, MD, KBins2, MBins2)).
+    Decoded = iolist_to_binary(erasuerl:decode(EC, MD, KBins2, MBins2)),
+    Bin = Decoded,
+    file:write_file("../out", Decoded).
 
 
