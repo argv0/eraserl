@@ -51,7 +51,7 @@ decode(_EC, _Meta, _KList, _MList) ->
 
 simple_test() ->
     {ok, EC} = erasuerl:new(),
-    {ok, Bin} = file:read_file("/etc/hosts"),
+    {ok, Bin} = file:read_file("/usr/share/dict/words"),
     {MD, KBins, MBins} = erasuerl:encode(EC, Bin),
     [K1, K2, K3, K4, K5, K6, K7, K8, K9] = KBins,
     [M1, M2, M3, M4] = MBins,

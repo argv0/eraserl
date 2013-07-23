@@ -61,8 +61,8 @@ static ERL_NIF_TERM ATOM_M;
 static ERL_NIF_TERM ATOM_W;
 static ERL_NIF_TERM ATOM_SIZE;
 static ERL_NIF_TERM ATOM_PACKETSIZE;
-static ERL_NIF_TERM ERROR_ENCODE;
-static ERL_NIF_TERM ERROR_DECODE;
+//static ERL_NIF_TERM ERROR_ENCODE;
+//static ERL_NIF_TERM ERROR_DECODE;
 
 static ErlNifFunc nif_funcs[] =
 {
@@ -148,7 +148,7 @@ ERL_NIF_TERM erasuerl_encode(ErlNifEnv* env, int argc, const ERL_NIF_TERM argv[]
                 newsize++;
         }
         int blocksize = newsize/handle->k;
-        char block[newsize];
+        char *block = (char *)calloc(newsize, sizeof(char));
 
         memset(block, '0', newsize);
         memcpy(block, item.data, item.size);
@@ -178,7 +178,9 @@ ERL_NIF_TERM erasuerl_encode(ErlNifEnv* env, int argc, const ERL_NIF_TERM argv[]
             memcpy(b.data, coding[i], blocksize);
             coded[i] = enif_make_binary(env, &b);
         }
-        
+        for (int i=0;i<handle->m;i++) 
+            if (coding[i] != 0) free(coding[i]);
+        free(block);
         ERL_NIF_TERM metadata = enif_make_list5(env,
                        enif_make_tuple2(env, ATOM_SIZE, enif_make_int(env, size)),
                        enif_make_tuple2(env, ATOM_K, enif_make_int(env, handle->k)),
