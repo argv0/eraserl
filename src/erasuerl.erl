@@ -17,7 +17,7 @@
 %%
 %% -------------------------------------------------------------------
 -module(erasuerl).
--export([new/3, encode/2, decode/4, simple_test/0]).
+-export([new/4, encode/2, decode/4, simple_test/0]).
 -on_load(init/0).
 
 -include_lib("eunit/include/eunit.hrl").
@@ -38,8 +38,8 @@ init() ->
                end,
      erlang:load_nif(filename:join(PrivDir, ?MODULE), 0).
 
--spec new(integer(), integer(), integer()) -> {ok, binary()}.
-new(_K, _M, _W) ->
+-spec new(pos_integer(), pos_integer(), pos_integer(), pos_integer()) -> {ok, binary()}.
+new(_K, _M, _W, _PacketSize) ->
     ?nif_stub.
 
 encode(_EC, _Bin) ->
@@ -50,14 +50,17 @@ decode(_EC, _Meta, _KList, _MList) ->
 
 
 simple_test() ->
-    {ok, EC} = erasuerl:new(9, 4, 4),
+    {ok, EC} = erasuerl:new(5, 3, 4, 64),
     {ok, Bin} = file:read_file("/usr/share/dict/words"),
     {MD, KBins, MBins} = erasuerl:encode(EC, Bin),
-    [K1, K2, K3, K4, K5, K6, K7, K8, K9] = KBins,
-    [M1, M2, M3, M4] = MBins,
-    KBins2 = [undefined, undefined, undefined, K4, K5, K6, K7, K8, K9],
-    MBins2 = [undefined, M2, M3, M4],
-    Decoded = iolist_to_binary(erasuerl:decode(EC, MD, KBins2, MBins2)),
+    %%[K1, K2, K3, K4, K5, K6, K7, K8, K9] = KBins,
+    %%[M1, M2, M3, M4] = MBins,
+    [K1, K2, K3, K4, K5] = KBins,
+    [M1, M2, M3] = MBins,
+    %%KBins2 = [undefined, undefined, undefined, K4, K5, K6, K7, K8, K9],
+    %%MBins2 = [undefined, M2, M3, M4],
+    KBins2 = [undefined, undefined, undefined, K4, K5],
+    Decoded = iolist_to_binary(erasuerl:decode(EC, MD, KBins2, MBins)),
     Bin = Decoded,
     file:write_file("../out", Decoded).
 
