@@ -17,7 +17,7 @@
 %%
 %% -------------------------------------------------------------------
 -module(erasuerl).
--export([new/0, encode/2, decode/4, simple_test/0]).
+-export([new/3, encode/2, decode/4, simple_test/0]).
 -on_load(init/0).
 
 -include_lib("eunit/include/eunit.hrl").
@@ -38,8 +38,8 @@ init() ->
                end,
      erlang:load_nif(filename:join(PrivDir, ?MODULE), 0).
 
--spec new() -> {ok, binary()}.
-new() ->
+-spec new(integer(), integer(), integer()) -> {ok, binary()}.
+new(_K, _M, _W) ->
     ?nif_stub.
 
 encode(_EC, _Bin) ->
@@ -50,7 +50,7 @@ decode(_EC, _Meta, _KList, _MList) ->
 
 
 simple_test() ->
-    {ok, EC} = erasuerl:new(),
+    {ok, EC} = erasuerl:new(9, 4, 4),
     {ok, Bin} = file:read_file("/usr/share/dict/words"),
     {MD, KBins, MBins} = erasuerl:encode(EC, Bin),
     [K1, K2, K3, K4, K5, K6, K7, K8, K9] = KBins,
