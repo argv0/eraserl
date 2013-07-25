@@ -87,7 +87,6 @@ template <typename Acc> ERL_NIF_TERM fold(ErlNifEnv* env, ERL_NIF_TERM list,
             return result;
         }
     }
-
     return ATOM_OK;
 }
 
@@ -154,21 +153,21 @@ public:
         size(item->size), 
         newsize(round_up_size(item->size, handle->k, handle->w, handle->packetsize)),
         blocksize(newsize/handle->k), 
-        data(new char*[handle->k]), 
-        coding(new char*[handle->m])
+        data((char **)enif_alloc(handle->k)),
+        coding((char **)enif_alloc(handle->m))
     {
         enif_realloc_binary(item, newsize);
         for (int i=0;i<h->k;i++)
             data[i] = (char *)item->data+(i*blocksize);
         for (int i=0;i<h->m;i++)
-            coding[i] = new char[blocksize];
+            coding[i] = (char *)enif_alloc(blocksize);
     }
     ~encode_context() 
     {
-        delete[] data;
         for (int i=0;i<h->m;i++)
-            delete coding[i];
-        delete[] coding;
+            enif_free(coding[i]);
+        enif_free(coding);
+        enif_free(data);
     }
 public:
     void encode() 
@@ -228,22 +227,8 @@ private:
     
 };
 
-ERL_NIF_TERM erasuerl_encode(ErlNifEnv* env, int argc, const ERL_NIF_TERM argv[])
-{
-    erasuerl_handle *h;
-    ErlNifBinary item;
-    if (!enif_get_resource(env,argv[0],erasuerl_RESOURCE,(void**)&h) ||
-        !enif_inspect_binary(env, argv[1], &item))
-        return enif_make_badarg(env);
-
-    encode_context ctx(env, &item, h);
-    ctx.encode();
-    return enif_make_tuple3(env, ctx.metadata(), ctx.data_blocks(), ctx.code_blocks());
-}
-
-struct decode_context {
-
-    
+class decode_context {
+public:
     decode_context(ErlNifEnv *env, erasuerl_handle *h, ERL_NIF_TERM md,
                    ERL_NIF_TERM ks, ERL_NIF_TERM ms) 
         : env(env),
@@ -251,18 +236,35 @@ struct decode_context {
           metadata(md),
           kblocks(ks),
           mblocks(ms),
-          data(new char*[h->k]),
-          coding(new char*[h->m]),
-          erased(new int[h->k+h->m]),
-          erasures(new int[h->k+h->m]),
+          data((char **)enif_alloc(h->k)),
+          coding((char **)enif_alloc(h->m)),
+          erased((int *)enif_alloc(h->k+h->m)),
+          erasures((int *)enif_alloc(h->k+h->m)),
           opts(),
           numerased(0)
     {
         fold(env, metadata, parse_decode_option, opts);
-        for (int i=0; i< h->k+h->m; i++) erased[i] = 0;
+        bzero(data, h->k);
+        bzero(coding, h->m);
+        bzero(erased, h->k + h->m);
+        bzero(erasures, h->k + h->m);
         find_erasures();
     }
 
+    ~decode_context() 
+    {
+        for (int i=0; i < numerased; i++) 
+            if (erasures[i] < h->k) 
+                enif_free(data[erasures[i]]);
+            else 
+                enif_free(coding[erasures[i]]);
+        enif_free(data);
+        enif_free(coding);
+        enif_free(erased);
+        enif_free(erasures);
+    }
+
+public:
     int decode() 
     {
         return jerasure_schedule_decode_lazy(h->k, 
@@ -279,6 +281,7 @@ struct decode_context {
 
     void find_erasures() 
     {
+        /* look for erasures in data blocks */
         int i = 0;
         ERL_NIF_TERM head, tail, list = kblocks;
         while(enif_get_list_cell(env, list, &head, &tail)) {
@@ -295,6 +298,7 @@ struct decode_context {
             list = tail;
             i++;
         }
+        /* look for erasures in coding blocks */
         list = mblocks;
         i = 0;
         while(enif_get_list_cell(env, list, &head, &tail)) {
@@ -309,24 +313,18 @@ struct decode_context {
             i++;
             list = tail;
         }
+        /* allocate space for recovered data/coding blocks */
         for (int i=0; i < numerased; i++) 
             if (erasures[i] < h->k) 
-                data[erasures[i]] = (char *)calloc(1, blocksize);
+                data[erasures[i]] = (char *)enif_alloc(blocksize);
             else 
-                coding[erasures[i]-h->k] = (char *)calloc(1, blocksize);
+                coding[erasures[i]-h->k] = (char *)enif_alloc(blocksize);
         erasures[numerased] = -1;
     }
 
-    ~decode_context() 
-    {
-        delete[] data;
-        delete[] coding;
-        delete[] erased;
-        delete[] erasures;
-
-    }
-
+private:
     ErlNifEnv *env;
+public:
     erasuerl_handle *h;
     ERL_NIF_TERM metadata, kblocks, mblocks;
     char **data, **coding;
@@ -335,53 +333,54 @@ struct decode_context {
     int numerased, blocksize;
 };
 
+ERL_NIF_TERM erasuerl_encode(ErlNifEnv* env, int argc, const ERL_NIF_TERM argv[])
+{
+    erasuerl_handle *h;
+    ErlNifBinary item;
+    if (!enif_get_resource(env,argv[0],erasuerl_RESOURCE,(void**)&h) ||
+        !enif_inspect_binary(env, argv[1], &item))
+        return enif_make_badarg(env);
+
+    encode_context ctx(env, &item, h);
+    ctx.encode();
+    return enif_make_tuple3(env, ctx.metadata(), ctx.data_blocks(), ctx.code_blocks());
+}
 
 ERL_NIF_TERM erasuerl_decode(ErlNifEnv* env, int argc, const ERL_NIF_TERM argv[])
 {
     erasuerl_handle *h;
-    
-    if (enif_get_resource(env,argv[0],erasuerl_RESOURCE,(void**)&h) &&
-        enif_is_list(env, argv[1]) &&
-        enif_is_list(env, argv[2]) &&
-        enif_is_list(env, argv[3]))
-    {
-        decode_context ctx(env, h, argv[1], argv[2], argv[3]);
-        
-        if (ctx.decode()  == -1) { 
-            return ATOM_ERROR;
-        }
+    if (!enif_get_resource(env,argv[0],erasuerl_RESOURCE,(void**)&h) ||
+        !enif_is_list(env, argv[1]) ||
+        !enif_is_list(env, argv[2]) ||
+        !enif_is_list(env, argv[3]))
+        return enif_make_badarg(env);
 
-        ERL_NIF_TERM decoded[h->k];
-        int total = 0;
-        for (int i=0; i < h->k; i++)
-        {
-            ErlNifBinary b;
-            if (total+ctx.blocksize <= ctx.opts.size) {
-                enif_alloc_binary(ctx.blocksize, &b);
-                memcpy(b.data, ctx.data[i], ctx.blocksize);
-                total += ctx.blocksize;
-            }
-            else 
-            {
-                int idx = 0;
-                enif_alloc_binary(ctx.opts.size - total, &b);
-                for (int j=0; j < ctx.blocksize; j++)
-                    if (total++ < ctx.opts.size) 
-                        b.data[idx++] = ctx.data[i][j];
-                    else 
-                        break;
-            }
-            decoded[i] = enif_make_binary(env, &b);
+    decode_context ctx(env, h, argv[1], argv[2], argv[3]);
+    
+    if (ctx.decode()  == -1) 
+        return ATOM_ERROR;
+    
+    ERL_NIF_TERM decoded[h->k];
+    int total = 0;
+    for (int i=0; i < h->k; i++)
+    {
+        ErlNifBinary b;
+        if (total+ctx.blocksize <= ctx.opts.size) {
+            enif_alloc_binary(ctx.blocksize, &b);
+            memcpy(b.data, ctx.data[i], ctx.blocksize);
+            total += ctx.blocksize;
         }
-        /*
-        for (int i=0;i<ctx.h->k;i++)
-            if (data[i]) free(data[i]);
-        for (int i=0;i<h->m;i++)
-            if (coding[i]) free(coding[i]);
-        */
-        return enif_make_list_from_array(env, decoded, ctx.h->k);
+        else  {
+            enif_alloc_binary(ctx.opts.size - total, &b);
+            for (int j=0; j < ctx.blocksize; j++)
+                if (total++ < ctx.opts.size) 
+                    b.data[j] = ctx.data[i][j];
+                else 
+                    break;
+        }
+        decoded[i] = enif_make_binary(env, &b);
     }
-    return enif_make_badarg(env);
+    return enif_make_list_from_array(env, decoded, ctx.h->k);
 }
    
 static void erasuerl_resource_cleanup(ErlNifEnv* env, void* arg)
