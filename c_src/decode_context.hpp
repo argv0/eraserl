@@ -2,7 +2,6 @@
 #define __DECODE_CONTEXT_HPP_
 
 #include <array>
-#include <boost/shared_array.hpp>
 #include <cstdint>
 #include "erasuerl.h"
 #include "erasuerl_handle.hpp"
@@ -31,11 +30,7 @@ ERL_NIF_TERM parse_decode_option(ErlNifEnv* env, ERL_NIF_TERM item, decode_optio
     return ATOM_OK;
 }
 
-typedef std::array<char *, 20> data_ptrs;
-typedef std::array<char *, 10> code_ptrs;
 typedef std::array<int, 30>    erasure_list;
-
-using boost::shared_array;
 
 struct decode_context
 {
@@ -52,10 +47,10 @@ public:
         for (int i=0; i < num_erased_; i++) 
             {
                 if (erasures_[i] < handle_->k)  {
-                    delete data_[erasures_[i]];
+                    delete[] data_[erasures_[i]];
                 }
                 else { 
-                    delete coding_[erasures_[i]-handle_->k];
+                    delete[] coding_[erasures_[i]-handle_->k];
                 }
             }
     }
@@ -76,13 +71,15 @@ public:
     {
         ERL_NIF_TERM head, tail = data_blocks;        
         while (enif_get_list_cell(env_, tail, &head, &tail)) {
-            visit_data(head);
+            if (is_data_erasure(head))
+                erasures_[num_erased_++] = idx_;
             idx_++;
         }
         idx_ = 0;
         tail = coding_blocks;
         while (enif_get_list_cell(env_, tail, &head, &tail)) { 
-            visit_coding(head);        
+            if (is_coding_erasure(head))
+                erasures_[num_erased_++] = handle_->k + idx_;
             idx_++;
         }
         for (int i=0; i < num_erased_; i++) {
@@ -96,27 +93,23 @@ public:
         erasures_[num_erased_] = -1;
     }
     
-    void visit_coding(ERL_NIF_TERM item)
+    bool is_coding_erasure(ERL_NIF_TERM item)
     {
         ErlNifBinary bin;
-        if (!enif_inspect_binary(env_, item, &bin))  { 
-            erasures_[num_erased_++] = handle_->k + idx_;
-        }
-        else { 
-            coding_[idx_] = reinterpret_cast<char *>(bin.data);
-        }
+        if (!enif_inspect_binary(env_, item, &bin))
+            return true;
+        coding_[idx_] = reinterpret_cast<char *>(bin.data);
+        return false;
     }
 
-    void visit_data(ERL_NIF_TERM item)
+    bool is_data_erasure(ERL_NIF_TERM item)
     {
         ErlNifBinary bin;
-        if (!enif_inspect_binary(env_, item, &bin)) { 
-            erasures_[num_erased_++] = idx_;
-        }
-        else {
-            blocksize_ = bin.size;
-            data_[idx_] = reinterpret_cast<char *>(bin.data);
-        }
+        if (!enif_inspect_binary(env_, item, &bin)) 
+            return true;
+        blocksize_ = bin.size;
+        data_[idx_] = reinterpret_cast<char *>(bin.data);
+        return false;
     }
 
     int decode() 

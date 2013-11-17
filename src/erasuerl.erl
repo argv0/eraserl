@@ -50,17 +50,22 @@ decode(_EC, _Meta, _KList, _MList) ->
 
 
 simple_test() ->
-    {ok, EC} = erasuerl:new(5, 3, 4, 64),
-    {ok, Bin} = file:read_file("/usr/share/dict/words"),
+    {ok, EC} = erasuerl:new(11, 5, 4, 64),
+    %%{ok, Bin} = file:read_file("/usr/share/dict/words"),
+    {ok, Bin} = file:read_file("/tmp/20m"),
+    ?debugFmt("foo\n", []),
     {MD, KBins, MBins} = erasuerl:encode(EC, Bin),
-    %%[K1, K2, K3, K4, K5, K6, K7, K8, K9] = KBins,
-    %%[M1, M2, M3, M4] = MBins,
-    [K1, K2, K3, K4, K5] = KBins,
-    [M1, M2, M3] = MBins,
+    ?debugFmt("~p~n", [MD]),
+    %[K1, K2, K3, K4, K5, K6, K7, K8, K9, K10] = KBins,
+    [M1, M2, M3, M4, M5] = MBins,
+    [K1, K2, K3, K4, K5, K6, K7, K8, K9, K10, K11] = KBins,
+    KBins2=[K1, K2, K3, undefined, undefined, undefined, K7, K8, K9, K10, K11],
+    %%[M1, M2, M3] = MBins,
+    %%KBins2 = [undefined, undefined, K3, K4, K5, K6, K7, K8, K9, K10],
     %%KBins2 = [undefined, undefined, undefined, K4, K5, K6, K7, K8, K9],
-    %%MBins2 = [undefined, M2, M3, M4],
-    KBins2 = [undefined, undefined, undefined, K4, K5],
-    Decoded = iolist_to_binary(erasuerl:decode(EC, MD, KBins2, MBins)),
+    %%MBins2 = [undefined, M2, M3]
+    MBins2 = [M1, M2, M3, undefined, M4],
+    Decoded = iolist_to_binary(erasuerl:decode(EC, MD, KBins2, MBins2)),
     Bin = Decoded,
     file:write_file("../out", Decoded).
 

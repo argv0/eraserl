@@ -20,6 +20,8 @@
 #ifndef ERL_RS_NIFS_H_
 #define ERL_RS_NIFS_H_
 
+#include <array>
+
 extern "C" {
 
 #include "erl_nif_compat.h"
@@ -50,6 +52,9 @@ static const size_t MAX_K = 255;
 static const size_t MAX_M = 255;
 
 } // extern "C"
+
+typedef std::array<char *, 20> data_ptrs;
+typedef std::array<char *, 10> code_ptrs;
 
 template <typename Acc> 
 ERL_NIF_TERM fold(ErlNifEnv* env, ERL_NIF_TERM list,
