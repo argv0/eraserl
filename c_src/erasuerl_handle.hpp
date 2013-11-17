@@ -8,7 +8,6 @@ extern "C" {
 #include "Jerasure/include/jerasure.h"
 }
 
-
 struct erasuerl_handle 
 {
     int *matrix;
@@ -32,9 +31,5 @@ struct erasuerl_handle
                                              packetsize, 1);
     }
 };
-
-
-
-
 
 #endif // include guard

@@ -49,7 +49,6 @@ static const size_t DEFAULT_W = 4;
 static const size_t MAX_K = 255;
 static const size_t MAX_M = 255;
 
-
 } // extern "C"
 
 template <typename Acc> 
@@ -66,6 +65,5 @@ ERL_NIF_TERM fold(ErlNifEnv* env, ERL_NIF_TERM list,
     }
     return ATOM_OK;
 }
-
 
 #endif // include guard

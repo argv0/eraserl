@@ -21,8 +21,6 @@
 #include <cstring>
 #include <cstdint>
 #include <cstdlib>
-#include <array>
-#include <functional>
 #include "erasuerl_handle.hpp"
 #include "decode_context.hpp"
 #include "encode_context.hpp"
@@ -52,7 +50,6 @@ static ErlNifFunc nif_funcs[] =
 
 #define ATOM(Id, Value) { Id = enif_make_atom(env, Value); }
 
-
 ERL_NIF_TERM erasuerl_new(ErlNifEnv* env, int argc, const ERL_NIF_TERM argv[])
 {
     int k, m, w, packetsize;
@@ -78,8 +75,6 @@ ERL_NIF_TERM erasuerl_new(ErlNifEnv* env, int argc, const ERL_NIF_TERM argv[])
     enif_release_resource_compat(env, h);
     return enif_make_tuple2(env, ATOM_OK, result);
 }
-
-
 
 ERL_NIF_TERM erasuerl_encode(ErlNifEnv* env, int argc, const ERL_NIF_TERM argv[])
 {
@@ -112,10 +107,10 @@ ERL_NIF_TERM erasuerl_decode(ErlNifEnv* env, int argc, const ERL_NIF_TERM argv[]
    
 static void erasuerl_resource_cleanup(ErlNifEnv* env, void* arg)
 {
-    erasuerl_handle* h = (erasuerl_handle*)arg;
-    free(h->matrix);
-    free(h->bitmatrix);
-    free(h->schedule);
+    //erasuerl_handle* h = (erasuerl_handle*)arg;
+    //if (h->matrix) free(h->matrix);
+    //if (h->bitmatrix) free(h->bitmatrix);
+    //if (h->schedule) free(h->schedule);
 }
 
 static int on_load(ErlNifEnv* env, void** priv_data, ERL_NIF_TERM load_info)

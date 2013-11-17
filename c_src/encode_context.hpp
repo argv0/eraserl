@@ -88,6 +88,4 @@ private:
     data_blocks data;
 };
 
-
-
 #endif // include guard
