@@ -3,6 +3,8 @@
 
 #include <cstdint>
 #include <cstring>
+#include <unistd.h>
+#include <sys/uio.h>
 #include "erasuerl_handle.hpp"
 #include "erasuerl.h"
 
@@ -20,19 +22,18 @@ size_t round_up_size(size_t origsize, erasuerl_handle *handle)
 
 class encode_context {
 public:
-    encode_context(ErlNifEnv *env, ErlNifBinary* bin, erasuerl_handle *handle) :
-        env(env),
-        item(bin), 
+    encode_context(iovec* iov, erasuerl_handle *handle) :
+        iov_(iov), 
         h(handle),
-        orig_size(item->size),
-        newsize(round_up_size(item->size, handle)),
+        orig_size(iov->iov_len),
+        newsize(round_up_size(iov->iov_len, handle)),
         blocksize(newsize/handle->k),
         coding(handle->m),
         data(handle->k)
     {
-        enif_realloc_binary(item, newsize);
+        //enif_realloc_binary(item, newsize);
         for (int i=0;i<handle->k;i++) {
-            data[i] = reinterpret_cast<char *>(item->data+(i*blocksize));
+            data[i] = reinterpret_cast<char *>((char *)iov_->iov_base+(i*blocksize));
         }
         for (int i=0;i<handle->m;i++) {
             coding[i] = new char[blocksize];
@@ -50,7 +51,7 @@ public:
     }
     
     ERL_NIF_TERM 
-    metadata() const 
+    metadata(ErlNifEnv* env) const 
     { 
         return enif_make_list5(env,
                    enif_make_tuple2(env, ATOM_SIZE, enif_make_int(env, orig_size)),
@@ -62,7 +63,7 @@ public:
     }
 
     ERL_NIF_TERM 
-    get_data_blocks() const 
+    get_data_blocks(ErlNifEnv *env) const 
     {
         ERL_NIF_TERM ret[h->k];
         for (int i=0; i < h->k; i++)
@@ -76,7 +77,7 @@ public:
     }
 
     ERL_NIF_TERM 
-    code_blocks() const 
+    code_blocks(ErlNifEnv *env) const 
     { 
         ERL_NIF_TERM ret[h->m];
         for (int i=0; i < h->m; i++)
@@ -89,8 +90,7 @@ public:
         return enif_make_list_from_array(env, ret, h->m);
     }
 private:
-    ErlNifEnv *env = nullptr;
-    ErlNifBinary *item = nullptr;
+    iovec *iov_ = nullptr;
     erasuerl_handle* h;
     std::size_t orig_size = 0;
     std::size_t newsize = 0;

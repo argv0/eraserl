@@ -20,6 +20,13 @@
 #ifndef ERL_RS_NIFS_H_
 #define ERL_RS_NIFS_H_
 
+struct erasuerl_params
+{
+private:
+    int k_;
+    int m_;
+};
+
 extern "C" {
 
 #include "erl_nif_compat.h"
@@ -97,5 +104,6 @@ ERL_NIF_TERM fold(ErlNifEnv* env, ERL_NIF_TERM list,
     }
     return ATOM_OK;
 }
+
 
 #endif // include guard

@@ -84,9 +84,12 @@ ERL_NIF_TERM erasuerl_encode(ErlNifEnv* env, int argc, const ERL_NIF_TERM argv[]
         !enif_inspect_binary(env, argv[1], &item))
         return enif_make_badarg(env);
 
-    encode_context ctx(env, &item, h);
+    struct iovec iov = {item.data, item.size};
+    size_t newsize = round_up_size(item.size, h);
+    enif_realloc_binary(&item, newsize);    
+    encode_context ctx(&iov, h);
     ctx.encode();
-    return enif_make_tuple3(env, ctx.metadata(), ctx.get_data_blocks(), ctx.code_blocks());
+    return enif_make_tuple3(env, ctx.metadata(env), ctx.get_data_blocks(env), ctx.code_blocks(env));
 }
 
 ERL_NIF_TERM erasuerl_decode(ErlNifEnv* env, int argc, const ERL_NIF_TERM argv[])
