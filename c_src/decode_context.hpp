@@ -1,7 +1,6 @@
 #ifndef __DECODE_CONTEXT_HPP_
 #define __DECODE_CONTEXT_HPP_
 
-#include <array>
 #include <cstdint>
 #include "erasuerl.h"
 #include "erasuerl_handle.hpp"
@@ -30,43 +29,23 @@ ERL_NIF_TERM parse_decode_option(ErlNifEnv* env, ERL_NIF_TERM item, decode_optio
     return ATOM_OK;
 }
 
-typedef std::array<int, 30>    erasure_list;
-
 struct decode_context
 {
 public:    
     decode_context(ErlNifEnv *env, erasuerl_handle* handle, ERL_NIF_TERM metadata)
         : env_(env),
-          handle_(handle) 
+          handle_(handle),
+          erasures_(handle->k+handle->m),
+          data_(handle->k),
+          coding_(handle->m)
     {
         fold(env, metadata, parse_decode_option, opts_);
     }
     
-    ~decode_context() 
-    {
-        for (int i=0; i < num_erased_; i++) 
-            {
-                if (erasures_[i] < handle_->k)  {
-                    delete[] data_[erasures_[i]];
-                }
-                else { 
-                    delete[] coding_[erasures_[i]-handle_->k];
-                }
-            }
-    }
-
     decode_options options() const { return opts_; }
 
     std::size_t    blocksize() const { return blocksize_; }
-
-    const data_ptrs & data() const  { return data_;  }
-
-    data_ptrs &       data() { return data_; }
-
-    const code_ptrs& coding() const  { return coding_; }
-
-    code_ptrs&       coding() { return coding_;  }
-
+    
     void find_erasures(ERL_NIF_TERM data_blocks, ERL_NIF_TERM coding_blocks)
     {
         ERL_NIF_TERM head, tail = data_blocks;        
@@ -119,24 +98,24 @@ public:
 
     ERL_NIF_TERM get_blocks() 
     {
-        std::array<ERL_NIF_TERM, MAX_K> result = {{0}};
+        unique_array<ERL_NIF_TERM> result(handle_->k);
         std::size_t total = 0;
 
         for (int i=0; i < handle_->k; i++) 
         {
             ErlNifBinary b;
-            if (total + blocksize() <= options().size)
+            if (total + blocksize_ <= opts_.size)
             {
-                enif_alloc_binary(blocksize(), &b);
-                memcpy(b.data, data_[i], blocksize());
-                total += blocksize();
+                enif_alloc_binary(blocksize_, &b);
+                memcpy(b.data, data_[i], blocksize_);
+                total += blocksize_;
             }
             else 
             {
-                enif_alloc_binary(options().size - total, &b);
-                for (int j=0; j < blocksize(); j++)
+                enif_alloc_binary(opts_.size - total, &b);
+                for (int j=0; j < blocksize_; j++)
                 {
-                    if (total++ < options().size) 
+                    if (total++ < opts_.size) 
                     {
                         b.data[j] = data_[i][j];
                     }
@@ -153,9 +132,10 @@ public:
 private:
     ErlNifEnv *env_ = nullptr;
     erasuerl_handle* handle_ = nullptr;
-    erasure_list erasures_ = {{0}};
-    data_ptrs data_ = {{0}};
-    code_ptrs coding_ = {{0}};
+    //erasure_list erasures_ = {{0}};
+    unique_array<int> erasures_;
+    unique_array<char *> data_;
+    unique_array<char *> coding_;
     std::size_t num_erased_ = 0;
     int idx_ = 0;
     std::size_t blocksize_ = 0;

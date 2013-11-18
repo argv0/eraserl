@@ -20,8 +20,6 @@
 #ifndef ERL_RS_NIFS_H_
 #define ERL_RS_NIFS_H_
 
-#include <array>
-
 extern "C" {
 
 #include "erl_nif_compat.h"
@@ -53,8 +51,37 @@ static const size_t MAX_M = 255;
 
 } // extern "C"
 
-typedef std::array<char *, 20> data_ptrs;
-typedef std::array<char *, 10> code_ptrs;
+template <typename T>
+struct unique_array
+{
+    unique_array(std::size_t size) 
+        : data_(new T[size]) {}
+
+    ~unique_array()
+    {
+        delete[] data_;
+    }
+
+    T* data() const 
+    {
+        return data_;
+    }
+
+    operator T*() const 
+    {
+        return data_;
+    }
+
+    T& operator[](std::size_t index) const
+    {
+        return data_[index];
+    }
+    
+private:
+    unique_array(const unique_array&) = delete;
+    const unique_array& operator =(const unique_array&) = delete;
+    T* data_;
+};
 
 template <typename Acc> 
 ERL_NIF_TERM fold(ErlNifEnv* env, ERL_NIF_TERM list,

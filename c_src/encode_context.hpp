@@ -9,8 +9,11 @@
 size_t round_up_size(size_t origsize, erasuerl_handle *handle) 
 {
     size_t newsize = origsize;
-    if (origsize % (handle->k * handle->w * handle->packetsize * sizeof(size_t)) != 0)
-        while (newsize%((handle->k)*(handle->w)*handle->packetsize*sizeof(size_t)) != 0) 
+    size_t packetsize = handle->packetsize;
+    size_t k = handle->k;
+    size_t w = handle->w;
+    if (origsize % (k * w * packetsize * sizeof(size_t)) != 0)
+        while (newsize % (k*w*packetsize*sizeof(size_t)) != 0)
             newsize++;
     return newsize;
 }
@@ -23,7 +26,9 @@ public:
         h(handle),
         orig_size(item->size),
         newsize(round_up_size(item->size, handle)),
-        blocksize(newsize/handle->k)
+        blocksize(newsize/handle->k),
+        coding(handle->m),
+        data(handle->k)
     {
         enif_realloc_binary(item, newsize);
         for (int i=0;i<handle->k;i++) {
@@ -90,8 +95,8 @@ private:
     std::size_t orig_size = 0;
     std::size_t newsize = 0;
     std::size_t blocksize = 0;
-    code_ptrs coding = {{0}};
-    data_ptrs data = {{0}};
+    unique_array<char *> coding;
+    unique_array<char *> data;
 };
 
 #endif // include guard
