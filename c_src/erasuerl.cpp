@@ -129,10 +129,8 @@ ERL_NIF_TERM erasuerl_decode(ErlNifEnv* env, int argc, const ERL_NIF_TERM argv[]
     decode_options opts;
     fold(env, argv[1], parse_decode_option, opts);
     decode_context dstate(h);
-    if (dstate.decode(env, argv[2], argv[3], opts.size)  == -1)
+    if (!dstate.decode(env, argv[2], argv[3], opts.size))
         return ATOM_ERROR;
-
-    //ERL_NIF_TERM res = ATOM_OK;
     ERL_NIF_TERM res =  dstate.get_blocks(env);
     return res;
 }

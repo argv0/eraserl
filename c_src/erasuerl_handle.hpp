@@ -1,8 +1,6 @@
 #ifndef __ERASUERL_HANDLE_HPP
 #define __ERASUERL_HANDLE_HPP
 
-#include "erasuerl.h"
-
 extern "C" { 
 #include "Jerasure/include/cauchy.h"
 #include "Jerasure/include/jerasure.h"

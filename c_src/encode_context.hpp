@@ -6,7 +6,8 @@
 #include <unistd.h>
 #include <sys/uio.h>
 #include "erasuerl_handle.hpp"
-#include "erasuerl.h"
+#include "erasuerl.hpp"
+#include "erasuerl_nifs.h"
 
 size_t round_up_size(size_t origsize, erasuerl_handle *handle) 
 {
