@@ -20,12 +20,7 @@
 #ifndef ERL_RS_NIFS_H_
 #define ERL_RS_NIFS_H_
 
-struct erasuerl_params
-{
-private:
-    int k_;
-    int m_;
-};
+#include <algorithm>
 
 extern "C" {
 
@@ -62,12 +57,21 @@ template <typename T>
 struct unique_array
 {
     unique_array(std::size_t size) 
-        : data_(new T[size]) {}
+      : size_(size),
+        data_(new T[size]) {}
+
+    unique_array(std::size_t size, const T& initval) 
+    : unique_array(size) 
+    {
+        std::fill(&data_[0], &data_[size], initval);
+    }
 
     ~unique_array()
     {
         delete[] data_;
     }
+
+    size_t size() const { return size_; }
 
     T* data() const 
     {
@@ -87,6 +91,7 @@ struct unique_array
 private:
     unique_array(const unique_array&) = delete;
     const unique_array& operator =(const unique_array&) = delete;
+    std::size_t size_;
     T* data_;
 };
 

@@ -17,6 +17,7 @@ struct erasuerl_handle
     int m; // = 4;
     int w;  // = 4;
     int packetsize;
+    size_t num_blocks; 
 
     void encode(size_t blocksize, char **data, char **coding)
     {

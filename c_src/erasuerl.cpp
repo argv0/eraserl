@@ -65,6 +65,7 @@ ERL_NIF_TERM erasuerl_new(ErlNifEnv* env, int argc, const ERL_NIF_TERM argv[])
     h->k = k;
     h->m = m;
     h->w = w;
+    h->num_blocks = k+m;
     h->packetsize = packetsize;
     h->matrix = cauchy_good_general_coding_matrix(h->k, h->m, h->w);
     h->bitmatrix = jerasure_matrix_to_bitmatrix(h->k, h->m, h->w, 
@@ -92,6 +93,30 @@ ERL_NIF_TERM erasuerl_encode(ErlNifEnv* env, int argc, const ERL_NIF_TERM argv[]
     return enif_make_tuple3(env, ctx.metadata(env), ctx.get_data_blocks(env), ctx.code_blocks(env));
 }
 
+struct decode_options 
+{
+    int size;
+    int packetsize;
+};
+
+ERL_NIF_TERM parse_decode_option(ErlNifEnv* env, ERL_NIF_TERM item, decode_options& opts)
+{
+    int arity;
+    const ERL_NIF_TERM* option;
+    if (enif_get_tuple(env, item, &arity, &option))
+    {
+        if (option[0] == ATOM_SIZE)
+        {
+            enif_get_int(env, option[1], &opts.size);
+        }
+        else if (option[0] == ATOM_PACKETSIZE)
+        {
+            enif_get_int(env, option[1], &opts.packetsize);
+        }
+    }
+    return ATOM_OK;
+}
+
 ERL_NIF_TERM erasuerl_decode(ErlNifEnv* env, int argc, const ERL_NIF_TERM argv[])
 {
     erasuerl_handle *h;
@@ -101,11 +126,15 @@ ERL_NIF_TERM erasuerl_decode(ErlNifEnv* env, int argc, const ERL_NIF_TERM argv[]
         !enif_is_list(env, argv[3]))
         return enif_make_badarg(env);
 
-    decode_context dstate(env, h, argv[1]);
-    dstate.find_erasures(argv[2], argv[3]);
-    if (dstate.decode()  == -1) 
+    decode_options opts;
+    fold(env, argv[1], parse_decode_option, opts);
+    decode_context dstate(h);
+    if (dstate.decode(env, argv[2], argv[3], opts.size)  == -1)
         return ATOM_ERROR;
-    return dstate.get_blocks();
+
+    //ERL_NIF_TERM res = ATOM_OK;
+    ERL_NIF_TERM res =  dstate.get_blocks(env);
+    return res;
 }
    
 static void erasuerl_resource_cleanup(ErlNifEnv* env, void* arg)
