@@ -13,7 +13,7 @@ size_t round_up_size(size_t origsize, erasuerl_handle *handle)
     size_t k = handle->k;
     size_t w = handle->w;
     if (origsize % (k * w * packetsize * sizeof(size_t)) != 0)
-        while (newsize % (k*w*packetsize*sizeof(size_t)) != 0)
+        while (newsize % (k * w * packetsize * sizeof(size_t)) != 0)
             newsize++;
     return newsize;
 }
