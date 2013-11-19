@@ -1,168 +1,137 @@
 #ifndef __DECODE_CONTEXT_HPP_
 #define __DECODE_CONTEXT_HPP_
 
-#include <array>
 #include <cstdint>
-#include "erasuerl.h"
+#include <cassert>
+#include <vector>
+#include "erasuerl.hpp"
 #include "erasuerl_handle.hpp"
+#include "erasuerl_nifs.h"
 
-struct decode_options 
+struct decode_data 
 {
-    int size;
-    int packetsize;
+    decode_data(std::size_t num_blocks)
+        :
+        data_(num_blocks, nullptr),
+        erasures_(num_blocks, -1),
+        erased_(num_blocks, false) {}
+protected:
+    unique_array<char *> data_;
+    unique_array<int> erasures_;
+    unique_array<bool> erased_;
 };
 
-ERL_NIF_TERM parse_decode_option(ErlNifEnv* env, ERL_NIF_TERM item, decode_options& opts)
+struct decode_state : public decode_data
 {
-    int arity;
-    const ERL_NIF_TERM* option;
-    if (enif_get_tuple(env, item, &arity, &option))
-    {
-        if (option[0] == ATOM_SIZE)
-        {
-            enif_get_int(env, option[1], &opts.size);
-        }
-        else if (option[0] == ATOM_PACKETSIZE)
-        {
-            enif_get_int(env, option[1], &opts.packetsize);
-        }
-    }
-    return ATOM_OK;
-}
+    decode_state(erasuerl_handle *handle,
+                 std::size_t blocksize, std::size_t orig_size)
+        : decode_data(handle->num_blocks),
+          handle_(handle),
+          orig_size_(orig_size),
+          blocksize_(blocksize)
 
-typedef std::array<char *, MAX_K> data_ptrs;
-typedef std::array<char *, MAX_M> code_ptrs;
-typedef std::array<int, MAX_M>    erasure_list;
-
-struct decode_context
-{
-public:    
-    decode_context(ErlNifEnv *env, erasuerl_handle* handle, ERL_NIF_TERM metadata)
-        : env_(env),
-          handle_(handle) 
     {
-        fold(env, metadata, parse_decode_option, opts_);
     }
 
-    ~decode_context() 
+    ~decode_state() 
     {
-        for (int i=0; i < num_erased; i++) 
-            if (erasures[i] < handle_->k) 
-                enif_free(data_[erasures[i]]);
-            else 
-                enif_free(coding_[erasures[i]]);        
+        for (size_t i=0; i < handle_->num_blocks; i++)
+            if (erased_[i])
+                delete[] data_[i];
     }
 
-    decode_options options() const { return opts_; }
+    char **data_blocks() const { 
+        return data_;
+    }
 
-    std::size_t    blocksize() const { return blocksize_; }
+    char *data_block(size_t idx) const { 
+        return data_[idx];
+    }
 
-    const data_ptrs & data() const  { return data_;  }
-
-    data_ptrs &       data() { return data_; }
-
-    const code_ptrs& coding() const  { return coding_; }
-
-    code_ptrs&       coding() { return coding_;  }
-
-    void find_erasures(ERL_NIF_TERM data_blocks, ERL_NIF_TERM coding_blocks)
-    {
-        ERL_NIF_TERM head, tail = data_blocks;        
-        while (enif_get_list_cell(env_, tail, &head, &tail)) {
-            visit_data(head);
-            idx++;
-        }
-        idx = 0;
-        tail = coding_blocks;
-        while (enif_get_list_cell(env_, tail, &head, &tail)) { 
-            visit_coding(head);        
-            idx++;
-        }
-        for (int i=0; i < num_erased; i++) {
-            if (erasures[i] < handle_->k) { 
-                data_[erasures[i]] = reinterpret_cast<char *>(enif_alloc(blocksize_));
-            }
-            else { 
-                coding_[erasures[i] - handle_->k] = reinterpret_cast<char *>(enif_alloc(blocksize_));
-            }
-        }
-        erasures[num_erased] = -1;
+    char **code_blocks() const { 
+        return &(data_[handle_->k]);
     }
     
-    void visit_coding(ERL_NIF_TERM item)
-    {
-        ErlNifBinary bin;
-        if (!enif_inspect_binary(env_, item, &bin))  { 
-            erasures[num_erased++] = handle_->k + idx;
-        }
-        else { 
-            coding_[idx] = reinterpret_cast<char *>(bin.data);
-        }
+    std::size_t blocksize() const { 
+        return blocksize_;
     }
 
-    void visit_data(ERL_NIF_TERM item)
-    {
-        ErlNifBinary bin;
-        if (!enif_inspect_binary(env_, item, &bin)) { 
-            erasures[num_erased++] = idx;
-        }
-        else {
-            blocksize_ = bin.size;
-            data_[idx] = reinterpret_cast<char *>(bin.data);
-        }
+    int* erasures() const { 
+        return erasures_;
+    }
+    
+    bool* erased() const { 
+        return erased_;
     }
 
-    int decode() 
+    size_t original_size() const { 
+        return orig_size_;
+    }
+    
+    erasuerl_handle* handle() const {
+        return handle_;
+        
+    }
+    void data_block(size_t idx, char *block)
     {
-        return handle_->decode(blocksize_, data_.data(), coding_.data(), erasures.data());
+        data_[idx] = block;
     }
 
-    ERL_NIF_TERM get_blocks() 
-    {
-        std::array<ERL_NIF_TERM, MAX_K> result = {{0}};
-        std::size_t total = 0;
-
-        for (int i=0; i < handle_->k; i++) 
-        {
-            ErlNifBinary b;
-            if (total + blocksize() <= options().size)
-            {
-                enif_alloc_binary(blocksize(), &b);
-                memcpy(b.data, data_[i], blocksize());
-                total += blocksize();
-            }
-            else 
-            {
-                enif_alloc_binary(options().size - total, &b);
-                for (int j=0; j < blocksize(); j++)
-                {
-                    if (total++ < options().size) 
-                    {
-                        b.data[j] = data_[i][j];
-                    }
-                    else 
-                    {
-                        break;
-                    }
-                }
-            }
-            result[i] = enif_make_binary(env_, &b);
-        }
-        return enif_make_list_from_array(env_, result.data(), handle_->k);
+    void erasure(size_t idx) { 
+        erasures_[num_erased_++] = idx;
+        erased_[idx] = true;
     }
+    
+    void dump(const char *message=nullptr) const;
+    std::size_t num_erased_ = 0;
+
 private:
-    erasure_list erasures = {{0}};
-    data_ptrs data_ = {{0}};
-    code_ptrs coding_ = {{0}};
-    std::size_t num_erased = 0;
-    ErlNifEnv *env_ = nullptr;
-    erasuerl_handle* handle_ = nullptr;
-    int idx = 0;
+    erasuerl_handle *handle_ = nullptr;
+    std::size_t orig_size_ = 0;
     std::size_t blocksize_ = 0;
-    decode_options opts_;
 };
 
+inline bool decode(decode_state& ds)
+{
+    if (ds.handle()->decode(ds.blocksize(), ds.data_blocks(),
+                            ds.code_blocks(), ds.erasures()))
+        return false;
+    return true;
+}
 
+template <class T> 
+struct decoder 
+{
+    typedef T block_type;
 
+    decoder(erasuerl_handle* h, std::vector<T>& user_blocks, std::size_t blocksize,
+            std::size_t origsize)
+        :  user_blocks_(user_blocks),
+           state_(new decode_state(h, blocksize, origsize))
+    {           
+        for (size_t i=0; i < h->num_blocks; i++) {
+            block_type& block(user_blocks_.at(i));
+            if (erasuerl_is_erasure(block)) add_erasure(i);
+            state_->data_block(i, erasuerl_block_address(block));
+        }
+    }
+    
+    void add_erasure(size_t idx) 
+    {
+        state_->erasure(idx);
+        user_blocks_[idx] = erasuerl_new_block<T>(state_->blocksize());
+    }
+    
+    bool operator()() 
+    {
+        state_->dump("pre");
+        auto ret =  ::decode(*state_);
+        state_->dump("post");
+        return ret;
+    }
+private:
+    std::vector<T>& user_blocks_;
+    decode_state *state_;
+};
 
 #endif // include guard

@@ -21,8 +21,6 @@
 #include <cstring>
 #include <cstdint>
 #include <cstdlib>
-#include <array>
-#include <functional>
 #include "erasuerl_handle.hpp"
 #include "decode_context.hpp"
 #include "encode_context.hpp"
@@ -40,8 +38,9 @@ ERL_NIF_TERM ATOM_VALUE;
 ERL_NIF_TERM ATOM_K;
 ERL_NIF_TERM ATOM_M;
 ERL_NIF_TERM ATOM_W;
-ERL_NIF_TERM ATOM_SIZE;
+ERL_NIF_TERM ATOM_ORIG_SIZE;
 ERL_NIF_TERM ATOM_PACKETSIZE;
+ERL_NIF_TERM ATOM_BLOCKSIZE;
 
 static ErlNifFunc nif_funcs[] =
 {
@@ -52,6 +51,10 @@ static ErlNifFunc nif_funcs[] =
 
 #define ATOM(Id, Value) { Id = enif_make_atom(env, Value); }
 
+struct erasuerl_res
+{
+    erasuerl_handle* handle;
+};
 
 ERL_NIF_TERM erasuerl_new(ErlNifEnv* env, int argc, const ERL_NIF_TERM argv[])
 {
@@ -61,61 +64,143 @@ ERL_NIF_TERM erasuerl_new(ErlNifEnv* env, int argc, const ERL_NIF_TERM argv[])
         !enif_get_int(env, argv[2], &w) ||
         !enif_get_int(env, argv[3], &packetsize)) 
         return enif_make_badarg(env);
-    erasuerl_handle *h = 
-        (erasuerl_handle *)enif_alloc_resource_compat(env, erasuerl_RESOURCE,
-                                                      sizeof(erasuerl_handle));
-    memset(h, '\0', sizeof(erasuerl_handle));
-    h->k = k;
-    h->m = m;
-    h->w = w;
-    h->packetsize = packetsize;
-    h->matrix = cauchy_good_general_coding_matrix(h->k, h->m, h->w);
-    h->bitmatrix = jerasure_matrix_to_bitmatrix(h->k, h->m, h->w, 
-                                                h->matrix);
-    h->schedule = jerasure_smart_bitmatrix_to_schedule(h->k, h->m, 
-                                                       h->w, h->bitmatrix);
-    ERL_NIF_TERM result = enif_make_resource(env, h);
-    enif_release_resource_compat(env, h);
+    erasuerl_res *r = 
+        (erasuerl_res *)enif_alloc_resource_compat(env, erasuerl_RESOURCE,
+                                                   sizeof(erasuerl_res));
+    memset(r, '\0', sizeof(erasuerl_res));
+    r->handle = new erasuerl_handle(k, m, w, packetsize);
+    ERL_NIF_TERM result = enif_make_resource(env, r);
+    enif_release_resource_compat(env, r);
     return enif_make_tuple2(env, ATOM_OK, result);
 }
 
-
-
 ERL_NIF_TERM erasuerl_encode(ErlNifEnv* env, int argc, const ERL_NIF_TERM argv[])
 {
-    erasuerl_handle *h;
+    erasuerl_res *r = nullptr;
     ErlNifBinary item;
-    if (!enif_get_resource(env,argv[0],erasuerl_RESOURCE,(void**)&h) ||
+    if (!enif_get_resource(env,argv[0],erasuerl_RESOURCE,(void**)&r) ||
         !enif_inspect_binary(env, argv[1], &item))
         return enif_make_badarg(env);
-
-    encode_context ctx(env, &item, h);
+    struct iovec iov = {item.data, item.size};
+    size_t newsize = round_up_size(item.size, r->handle);
+    enif_realloc_binary(&item, newsize);    
+    encode_context ctx(&iov, r->handle);
     ctx.encode();
-    return enif_make_tuple3(env, ctx.metadata(), ctx.get_data_blocks(), ctx.code_blocks());
+    return enif_make_tuple3(env, ctx.metadata(env), ctx.get_data_blocks(env), ctx.code_blocks(env));
 }
+
+
+ERL_NIF_TERM parse_decode_option(ErlNifEnv* env, ERL_NIF_TERM item, decode_options& opts)
+{
+    int arity;
+    const ERL_NIF_TERM* option;
+    if (enif_get_tuple(env, item, &arity, &option))
+    {
+        if (option[0] == ATOM_ORIG_SIZE)
+            enif_get_int(env, option[1], &opts.orig_size);
+        else if (option[0] == ATOM_PACKETSIZE)
+            enif_get_int(env, option[1], &opts.packetsize);
+        else if (option[0] == ATOM_BLOCKSIZE)
+            enif_get_int(env, option[1], &opts.blocksize);
+        else if (option[0] == ATOM_K)
+            enif_get_int(env, option[1], &opts.k);
+        else if (option[0] == ATOM_M)
+            enif_get_int(env, option[1], &opts.m);
+        else if (option[0] == ATOM_W)
+            enif_get_int(env, option[1], &opts.w);
+
+    }
+    return ATOM_OK;
+}
+
+template <> 
+bool erasuerl_is_erasure<ErlNifBinary>(const ErlNifBinary& item) 
+{ 
+    return item.size == 0;
+}
+template <> 
+char *erasuerl_block_address<ErlNifBinary>(const ErlNifBinary& item) 
+{ 
+    return reinterpret_cast<char *>(item.data);
+}
+
+template <> 
+size_t erasuerl_block_size<ErlNifBinary>(const ErlNifBinary& item) 
+{ 
+    return item.size;
+}
+
+template <>
+ErlNifBinary erasuerl_new_block<ErlNifBinary>(size_t size)
+{
+    ErlNifBinary bin;
+    assert(enif_alloc_binary(size, &bin));
+    return bin;
+}
+
+inline size_t find_blocksize(ErlNifEnv *env, ERL_NIF_TERM binlist) 
+{
+    ERL_NIF_TERM head, tail = binlist;
+    ErlNifBinary bin;
+    while (enif_get_list_cell(env, tail, &head, &tail)) {
+        if (enif_inspect_binary(env, head, &bin))
+            if (bin.size) return bin.size;
+    }
+    return 0;
+}
+
 
 ERL_NIF_TERM erasuerl_decode(ErlNifEnv* env, int argc, const ERL_NIF_TERM argv[])
 {
-    erasuerl_handle *h;
-    if (!enif_get_resource(env,argv[0],erasuerl_RESOURCE,(void**)&h) ||
+    erasuerl_res *r = nullptr;
+    if (!enif_get_resource(env,argv[0],erasuerl_RESOURCE,(void**)&r) ||
         !enif_is_list(env, argv[1]) ||
         !enif_is_list(env, argv[2]) ||
         !enif_is_list(env, argv[3]))
         return enif_make_badarg(env);
 
-    decode_context dstate(env, h, argv[1]);
-    dstate.find_erasures(argv[2], argv[3]);
-    if (dstate.decode()  == -1) 
-        return ATOM_ERROR;
-    return dstate.get_blocks();
+    std::vector<ErlNifBinary> blocks;
+    //blocks.reserve(r->handle->num_blocks);
+    decode_options opts;
+    fold(env, argv[1], parse_decode_option, opts);
+    ERL_NIF_TERM head, tail = argv[2];
+    size_t i = 0;
+    while (enif_get_list_cell(env, tail, &head, &tail)) {
+        ErlNifBinary bin;
+        assert(enif_inspect_binary(env, head, &bin));
+        blocks.push_back(bin);
+        i++;
+    }
+    head, tail = argv[3];
+    while (enif_get_list_cell(env, tail, &head, &tail)) {
+        ErlNifBinary b;
+        assert(enif_inspect_binary(env, head, &b));
+        blocks.push_back(b);
+        i++;
+    }
+    decoder<ErlNifBinary> dcd(r->handle, blocks, opts.blocksize, opts.orig_size);
+    if (!dcd()) return ATOM_ERROR;
+    ERL_NIF_TERM result[r->handle->k];
+    for (i=0; i < (r->handle->k)-1; i++)  { 
+        ErlNifBinary bin = {0, 0};
+        enif_alloc_binary(opts.blocksize, &bin);
+        memcpy(bin.data, blocks[i].data, opts.blocksize);
+        result[i] = enif_make_binary(env, &bin);
+    }
+    size_t left = opts.orig_size - (opts.blocksize*(r->handle->k - 1));
+    if (left)  { 
+        ErlNifBinary b= {0, 0};
+        enif_alloc_binary(left, &b);
+        memcpy(b.data, blocks[i].data, left);
+        result[i] = enif_make_binary(env, &b);
+    }
+    return enif_make_list_from_array(env, result, r->handle->k);
 }
    
 static void erasuerl_resource_cleanup(ErlNifEnv* env, void* arg)
 {
-    erasuerl_handle* h = (erasuerl_handle*)arg;
-    free(h->matrix);
-    free(h->bitmatrix);
-    free(h->schedule);
+    erasuerl_res* r = (erasuerl_res*)arg;
+    delete r->handle;
 }
 
 static int on_load(ErlNifEnv* env, void** priv_data, ERL_NIF_TERM load_info)
@@ -136,11 +221,12 @@ static int on_load(ErlNifEnv* env, void** priv_data, ERL_NIF_TERM load_info)
     ATOM(ATOM_FALSE, "false");
     ATOM(ATOM_EMPTY, "empty");
     ATOM(ATOM_VALUE, "value");
-    ATOM(ATOM_SIZE, "size");
+    ATOM(ATOM_ORIG_SIZE, "orig_size");
     ATOM(ATOM_K, "k");
     ATOM(ATOM_M, "m");
     ATOM(ATOM_W, "w");
     ATOM(ATOM_PACKETSIZE, "packetsize");
+    ATOM(ATOM_BLOCKSIZE, "blocksize");
     return 0;
 }
 

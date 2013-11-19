@@ -39,18 +39,13 @@ extern ERL_NIF_TERM ATOM_VALUE;
 extern ERL_NIF_TERM ATOM_K;
 extern ERL_NIF_TERM ATOM_M;
 extern ERL_NIF_TERM ATOM_W;
-extern ERL_NIF_TERM ATOM_SIZE;
+extern ERL_NIF_TERM ATOM_ORIG_SIZE;
 extern ERL_NIF_TERM ATOM_PACKETSIZE;
-
-// 
-static const size_t DEFAULT_K = 9;
-static const size_t DEFAULT_M = 4;
-static const size_t DEFAULT_W = 4;
-static const size_t MAX_K = 255;
-static const size_t MAX_M = 255;
-
+extern ERL_NIF_TERM ATOM_BLOCKSIZE;
 
 } // extern "C"
+
+
 
 template <typename Acc> 
 ERL_NIF_TERM fold(ErlNifEnv* env, ERL_NIF_TERM list,
