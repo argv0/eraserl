@@ -8,28 +8,16 @@
 #include "erasuerl_handle.hpp"
 #include "erasuerl_nifs.h"
 
-struct decode_data 
-{
-    decode_data(std::size_t num_blocks)
-        :
-        data_(num_blocks, nullptr),
-        erasures_(num_blocks, -1),
-        erased_(num_blocks, false) 
-    {
-    }
-protected:
-    std::vector<char *> data_;
-    std::vector<int> erasures_;
-    std::vector<char> erased_;
-};
-
-struct decode_state : public decode_data
+struct decode_state 
 {
     decode_state(erasuerl_handle *handle,
                  std::size_t blocksize, 
                  std::size_t orig_size)
-        : decode_data(handle->num_blocks),
+        :
           handle_(handle),
+          data_(handle->num_blocks, nullptr),
+          erasures_(handle->num_blocks, -1),
+          erased_(handle->num_blocks, false),
           orig_size_(orig_size),
           blocksize_(blocksize)
     {
@@ -86,6 +74,9 @@ struct decode_state : public decode_data
 
 private:
     erasuerl_handle *handle_ = nullptr;
+    std::vector<char *> data_;
+    std::vector<int> erasures_;
+    std::vector<char> erased_;
     std::size_t orig_size_ = 0;
     std::size_t blocksize_ = 0;
     std::size_t num_erased_ = 0;
@@ -99,46 +90,23 @@ inline bool decode(decode_state& ds)
     return true;
 }
 
-template <class T> 
-struct decoder 
+template <typename T>
+decode_state* make_decode_state(erasuerl_handle* h, 
+                                std::vector<T>& user_blocks,
+                                std::size_t blocksize,
+                                std::size_t origsize)
 {
-    typedef T block_type;
-
-    decoder(erasuerl_handle* h, std::vector<T>& user_blocks, std::size_t blocksize,
-            std::size_t origsize)
-        :  user_blocks_(user_blocks),
-           state_(new decode_state(h, blocksize, origsize))
-    {           
-        for (size_t i=0; i < h->num_blocks; i++) {
-            block_type& block(user_blocks_.at(i));
-            if (erasuerl_is_erasure(block)) add_erasure(i);
-            state_->data_block(i, erasuerl_block_address(block));
+    decode_state* state = new decode_state(h, blocksize, origsize);
+    for (size_t i=0; i < h->num_blocks; i++) {
+        T& block(user_blocks.at(i));
+        if (erasuerl_is_erasure(block)) 
+        {
+            state->erasure(i);
+            user_blocks[i] = erasuerl_new_block<T>(blocksize);
         }
+        state->data_block(i, erasuerl_block_address(block));
     }
-
-    ~decoder() 
-    {
-        for (size_t i=0; i < user_blocks_.size(); ++i)
-            if (state_->erased()[i])
-                erasuerl_free_block(user_blocks_[i]);
-    }
-    void add_erasure(size_t idx) 
-    {
-        state_->erasure(idx);
-        user_blocks_[idx] = erasuerl_new_block<T>(state_->blocksize());
-    }
-    
-    bool operator()() 
-    {
-        if (!state_->num_erased()) return true;
-        state_->dump("pre");
-        auto ret =  ::decode(*state_);
-        state_->dump("post");
-        return ret;
-    }
-private:
-    std::vector<T>& user_blocks_;
-    decode_state *state_;
-};
+    return state;
+}
 
 #endif // include guard

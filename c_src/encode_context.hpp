@@ -32,15 +32,12 @@ public:
         coding(handle->m),
         data(handle->k)
     {
-        //enif_realloc_binary(item, newsize);
-        for (int i=0;i<handle->k;i++) {
+        for (int i=0;i<handle->k;i++) 
             data[i] = reinterpret_cast<char *>((char *)iov_->iov_base+(i*blocksize));
-        }
-        for (int i=0;i<handle->m;i++) {
+        for (int i=0;i<handle->m;i++) 
             coding[i] = new char[blocksize];
-        }
-        printf("blocksize : %zu\n", blocksize);
     }
+
     ~encode_context() 
     {
         for (int i=0;i<h->m; i++)

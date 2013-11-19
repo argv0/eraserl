@@ -11,9 +11,9 @@ void decode_state::dump(const char *message) const
     size_t coded_size = (blocksize_ * handle_->num_blocks);
     double bloat = (double(orig_size_*100) / double(coded_size)) + 100;
     printf("[ k=%d m=%d packetsize=%d\n  blocksize=%zu origsize=%zu codedsize=%zu\n"
-           "  bloat=%.2f%% ]\n",
+           "  bloat=%.2f%% (%zu bytes)]\n",
            handle_->k, handle_->m, handle_->packetsize, blocksize_,
-           orig_size_, coded_size, bloat);
+           orig_size_, coded_size, bloat, (coded_size - orig_size_));
     printf("%s\n" ,dashline);
     printf("%-5s%-10s%-20s%-15s%-10s\n", 
            "#", "type", "addr", "size", "was_erased");

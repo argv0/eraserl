@@ -170,21 +170,24 @@ ERL_NIF_TERM erasuerl_decode(ErlNifEnv* env, int argc, const ERL_NIF_TERM argv[]
         return enif_make_badarg(env);
 
     std::vector<ErlNifBinary> blocks;
-    std::vector<ERL_NIF_TERM> result;
-    blocks.reserve(r->handle->num_blocks);
     decode_options opts;
     fold(env, argv[1], parse_decode_option, opts);    
     fill_binvec(env, argv[2] /* data ptrs */, blocks);
     fill_binvec(env, argv[3] /* code ptrs */, blocks);
+    
+    decode_state* ds = make_decode_state(r->handle, blocks, opts.blocksize,
+                                         opts.orig_size);
+    ds->dump();
 
-    // instantiate a decoder with the blocks
-    decoder<ErlNifBinary> dcd(r->handle, blocks, opts.blocksize, opts.orig_size);
+    if (!ds->num_erased())
+        return enif_make_tuple2(env, ATOM_ERROR, ATOM_NO_ERASURES);
+    
+    if (!decode(*ds)) return ATOM_ERROR;
 
-    // decode
-    if (!dcd()) 
-        return ATOM_ERROR;
+    ds->dump();
 
     // convert the decoded ErlNifBinaries back into a ERL_NIF_TERM list
+    std::vector<ERL_NIF_TERM> result;
     std::size_t left = opts.orig_size;
     auto block_it = begin(blocks);
     do { 
@@ -193,7 +196,10 @@ ERL_NIF_TERM erasuerl_decode(ErlNifEnv* env, int argc, const ERL_NIF_TERM argv[]
     }
     while ((left -= opts.blocksize) >= opts.blocksize);
     if (left) 
-        result.push_back(enif_make_sub_binary(env, enif_make_binary(env, &(*block_it)), 0, left));
+        result.push_back(
+            enif_make_sub_binary(
+                env, enif_make_binary(env, &(*block_it)), 
+                0, left));
     return enif_make_list_from_array(env, result.data(), r->handle->k);
 }
    

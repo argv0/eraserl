@@ -17,7 +17,7 @@
 %%
 %% -------------------------------------------------------------------
 -module(erasuerl).
--export([new/4, encode/2, decode/4, simple_test/0]).
+-export([new/4, encode/2, decode/4]).
 -on_load(init/0).
 
 -include_lib("eunit/include/eunit.hrl").
@@ -48,43 +48,30 @@ encode(_EC, _Bin) ->
 decode(_EC, _Meta, _KList, _MList) ->
     ?nif_stub.
 
+no_erasures_test() ->
+    {ok, EC} = erasuerl:new(11, 5, 4, 64),    
+    {ok, Bin} = file:read_file("/usr/share/dict/words"),    
+    {MD, KBins, MBins} = erasuerl:encode(EC, Bin), 
+    ?assertEqual({error, no_erasures}, erasuerl:decode(EC, MD, KBins, MBins)).
 
-simple_test() ->
-    {ok, EC} = erasuerl:new(11, 5, 4, 64),
-    {ok, Bin} = file:read_file("/usr/share/dict/words"),
-    %%{ok, Bin} = file:read_file("/tmp/20m"),
-    ?debugFmt("in size: ~p~n", [size(Bin)]),
-    ?debugFmt("foo\n", []),
-    {MD, KBins, MBins} = erasuerl:encode(EC, Bin),
-    ?debugFmt("~p~n", [MD]),
-    %[K1, K2, K3, K4, K5, K6, K7, K8, K9, K10] = KBins,
-    [M1, M2, M3, M4, M5] = MBins,
-    [K1, K2, K3, K4, K5, K6, K7, K8, K9, K10, K11] = KBins,
-    %%KBins2=[K1, K2, K3, undefined, undefined, undefined, K7, K8, K9, K10, K11],
-    KBins2=[K1, K2, K3, <<>>, <<>>, <<>>, K7, K8, K9, K10, K11],
-    %%[M1, M2, M3] = MBins,
-    %%KBins2 = [undefined, undefined, K3, K4, K5, K6, K7, K8, K9, K10],
-    %%KBins2 = [undefined, undefined, undefined, K4, K5, K6, K7, K8, K9],
-    %%MBins2 = [undefined, M2, M3]
-    MBins2 = [<<>>, M2, M3, M4, M5],
-    Dec1 = [O1, O2, O3, O4, O5, O6, O7, O8, O9, O10, O11] = erasuerl:decode(EC, MD, KBins2, MBins2),
-    %%K1 = O1,
-    K2 = O2,
-    K3 = O3,
-    K4 = O4,
-    K5 = O5,
-    K6 = O6,
-    K7 = O7,
-    K8 = O8,
-    K9 = O9,
-    K10 = O10,
-    %%K11 = O11,
-    Decoded = iolist_to_binary(Dec1),
-    Bin = Decoded.
+simple_data_erasure_test() ->
+    {ok, EC} = erasuerl:new(11, 5, 4, 64),    
+    {ok, Bin} = file:read_file("/usr/share/dict/words"),    
+    {MD, KBins, MBins} = erasuerl:encode(EC, Bin), 
+    KBins2 = [<<>>|tl(KBins)],
+    ?assertEqual(Bin, iolist_to_binary(erasuerl:decode(EC, MD, KBins2, MBins))).
 
-    %%file:write_file("../out", Decoded),
-    %%?assertEqual(Bin,Decoded).
+simple_coding_erasure_test() ->
+    {ok, EC} = erasuerl:new(11, 5, 4, 64),    
+    {ok, Bin} = file:read_file("/usr/share/dict/words"),    
+    {MD, KBins, MBins} = erasuerl:encode(EC, Bin),    
+    MBins2 = [<<>>|tl(MBins)],    
+    ?assertEqual(Bin, iolist_to_binary(erasuerl:decode(EC, MD, KBins, MBins2))).
 
-
-
-
+bolth_test() ->   
+    {ok, EC} = erasuerl:new(11, 5, 4, 64),    
+    {ok, Bin} = file:read_file("/usr/share/dict/words"),    
+    {MD, KBins, MBins} = erasuerl:encode(EC, Bin),    
+    KBins2 = [<<>>|tl(KBins)],
+    MBins2 = [<<>>|tl(MBins)],    
+    ?assertEqual(Bin, iolist_to_binary(erasuerl:decode(EC, MD, KBins2, MBins2))).    
