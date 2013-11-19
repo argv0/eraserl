@@ -53,6 +53,7 @@ simple_test() ->
     {ok, EC} = erasuerl:new(11, 5, 4, 64),
     {ok, Bin} = file:read_file("/usr/share/dict/words"),
     %%{ok, Bin} = file:read_file("/tmp/20m"),
+    ?debugFmt("in size: ~p~n", [size(Bin)]),
     ?debugFmt("foo\n", []),
     {MD, KBins, MBins} = erasuerl:encode(EC, Bin),
     ?debugFmt("~p~n", [MD]),
@@ -65,10 +66,25 @@ simple_test() ->
     %%KBins2 = [undefined, undefined, K3, K4, K5, K6, K7, K8, K9, K10],
     %%KBins2 = [undefined, undefined, undefined, K4, K5, K6, K7, K8, K9],
     %%MBins2 = [undefined, M2, M3]
-    MBins2 = [M1, M2, M3, M4, M5],
-    Dec1 = erasuerl:decode(EC, MD, KBins2, MBins2),
+    MBins2 = [<<>>, M2, M3, M4, M5],
+    Dec1 = [O1, O2, O3, O4, O5, O6, O7, O8, O9, O10, O11] = erasuerl:decode(EC, MD, KBins2, MBins2),
+    %%K1 = O1,
+    K2 = O2,
+    K3 = O3,
+    K4 = O4,
+    K5 = O5,
+    K6 = O6,
+    K7 = O7,
+    K8 = O8,
+    K9 = O9,
+    K10 = O10,
+    %%K11 = O11,
     Decoded = iolist_to_binary(Dec1),
-    Bin = Decoded,
-    file:write_file("../out", Decoded).
+    Bin = Decoded.
+
+    %%file:write_file("../out", Decoded),
+    %%?assertEqual(Bin,Decoded).
+
+
 
 

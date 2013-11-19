@@ -10,6 +10,11 @@ static const size_t MAX_K = 255;
 static const size_t MAX_M = 255;
 
 
+template <typename T> bool erasuerl_is_erasure(const T& item) { return item != nullptr; }
+template <typename T> char *erasuerl_block_address(const T& item) { return nullptr; }
+template <typename T> size_t erasuerl_block_size(const T& item) { return 0; }
+template <typename T> T erasuerl_new_block(size_t size) { return new T[size]; }
+
 template <typename T>
 struct unique_array
 {

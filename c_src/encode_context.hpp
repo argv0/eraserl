@@ -39,6 +39,7 @@ public:
         for (int i=0;i<handle->m;i++) {
             coding[i] = new char[blocksize];
         }
+        printf("blocksize : %zu\n", blocksize);
     }
     ~encode_context() 
     {
@@ -54,13 +55,18 @@ public:
     ERL_NIF_TERM 
     metadata(ErlNifEnv* env) const 
     { 
-        return enif_make_list5(env,
-                   enif_make_tuple2(env, ATOM_SIZE, enif_make_int(env, orig_size)),
+        return enif_make_list6(env,
+                   enif_make_tuple2(env, ATOM_ORIG_SIZE, enif_make_int(env, orig_size)),
                    enif_make_tuple2(env, ATOM_K, enif_make_int(env, h->k)),
                    enif_make_tuple2(env, ATOM_M, enif_make_int(env, h->m)),
                    enif_make_tuple2(env, ATOM_W, enif_make_int(env, h->w)),
                    enif_make_tuple2(env, ATOM_PACKETSIZE, enif_make_int(env, 
-                                                                        h->packetsize)));
+                                                                        h->packetsize)),
+                   enif_make_tuple2(env, ATOM_BLOCKSIZE, enif_make_int(env,
+                                                                       blocksize)));
+                                                                                   
+                                    
+        
     }
 
     ERL_NIF_TERM 
