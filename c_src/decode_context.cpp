@@ -1,6 +1,6 @@
 #include "decode_context.hpp"
 
-void decode_state::dump(const char *message) const
+void coding_state::dump(const char *message) const
 {
     static const char *dashline = 
         "------------------------------------------------------------\n";
@@ -9,7 +9,7 @@ void decode_state::dump(const char *message) const
         "codedsize=%zu\n bloat=%.2f%% (%zu bytes)]\n";
     static const char *header_fmt = "%-5s%-10s%-20s%-15s%-10s\n";
     static const char *table_fmt =  "%-5d%-10s%-20p%-15zu%-10s\n";
-    printf("dumping decode_context: ");
+    printf("dumping coding_state: ");
     if (!message)
         printf("(%s)", message);
     printf("\n%s", dashline);

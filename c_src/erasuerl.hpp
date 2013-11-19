@@ -2,6 +2,7 @@
 #define __ERASUERL_HPP_
 
 #include <algorithm>
+#include <memory>
 
 static const size_t DEFAULT_K = 9;
 static const size_t DEFAULT_M = 4;

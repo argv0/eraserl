@@ -1,6 +1,8 @@
 #ifndef __ERASUERL_HANDLE_HPP
 #define __ERASUERL_HANDLE_HPP
 
+#include <cstring>
+
 extern "C" { 
 #include "Jerasure/include/cauchy.h"
 #include "Jerasure/include/jerasure.h"
@@ -14,6 +16,13 @@ struct decode_options
     int k = 0;
     int m = 0;
     int w = 0;
+};
+
+struct size_info
+{
+    std::size_t original_size = 0;
+    std::size_t coded_size = 0;
+    std::size_t block_size = 0;
 };
 
 class erasuerl_handle 
@@ -67,7 +76,6 @@ private:
     int *matrix = nullptr;
     int *bitmatrix = nullptr;
     int **schedule = nullptr;
-
 };
 
 #endif // include guard

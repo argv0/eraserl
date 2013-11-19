@@ -6,97 +6,59 @@
 #include <vector>
 #include "erasuerl.hpp"
 #include "erasuerl_handle.hpp"
-#include "erasuerl_nifs.h"
+#include "coding_state.hpp"
 
-struct decode_state 
+inline size_t round_up_size(size_t origsize, erasuerl_handle *handle) 
 {
-    decode_state(erasuerl_handle *handle,
-                 std::size_t blocksize, 
-                 std::size_t orig_size)
-        :
-          handle_(handle),
-          data_(handle->num_blocks, nullptr),
-          erasures_(handle->num_blocks, -1),
-          erased_(handle->num_blocks, false),
-          orig_size_(orig_size),
-          blocksize_(blocksize)
-    {
-    }
+    size_t newsize = origsize;
+    size_t packetsize = handle->packetsize;
+    size_t k = handle->k;
+    size_t w = handle->w;
+    if (origsize % (k * w * packetsize * sizeof(size_t)) != 0)
+        while (newsize % (k * w * packetsize * sizeof(size_t)) != 0)
+            newsize++;
+    return newsize;
+}
 
-    char **data_blocks()  { 
-        return data_.data();
-    }
-
-    char *data_block(size_t idx) const { 
-        return data_[idx];
-    }
-
-    char **code_blocks() { 
-        return &(data_[handle_->k]);
-    }
-
-    std::size_t blocksize() const { 
-        return blocksize_;
-    }
-
-    int* erasures()  { 
-        return erasures_.data();
-    }
-    
-    char* erased() { 
-        return erased_.data();
-    }
-
-    size_t original_size() const { 
-        return orig_size_;
-    }
-    
-    erasuerl_handle* handle() const {
-        return handle_;
-        
-    }
-    void data_block(size_t idx, char *block)
-    {
-        data_[idx] = block;
-    }
-
-    void erasure(size_t idx) { 
-        erasures_[num_erased_++] = idx;
-        erased_[idx] = true;
-    }
-
-    std::size_t num_erased() const { 
-        return num_erased_;
-    }
-
-    void dump(const char *message=nullptr) const;
-
-
-private:
-    erasuerl_handle *handle_ = nullptr;
-    std::vector<char *> data_;
-    std::vector<int> erasures_;
-    std::vector<char> erased_;
-    std::size_t orig_size_ = 0;
-    std::size_t blocksize_ = 0;
-    std::size_t num_erased_ = 0;
-};
-
-inline bool decode(decode_state& ds)
+inline bool decode(coding_state& state)
 {
-    if (ds.handle()->decode(ds.blocksize(), ds.data_blocks(),
-                            ds.code_blocks(), ds.erasures()))
+    if (state.handle()->decode(state.blocksize(), state.data_blocks(),
+                               state.code_blocks(), state.erasures()))
         return false;
     return true;
 }
 
+inline bool encode(coding_state& state)
+{
+    state.handle()->encode(state.blocksize(), state.data_blocks(),
+                           state.code_blocks());
+    return true;
+}
+
 template <typename T>
-decode_state* make_decode_state(erasuerl_handle* h, 
+std::shared_ptr<coding_state> make_encode_state(erasuerl_handle* h, const T& data)
+{
+    
+    size_t new_size = round_up_size(erasuerl_block_size(data), h);
+    size_t block_size = new_size / h->k;
+    auto state = std::make_shared<coding_state>(h, block_size);
+    char *data_ptr = erasuerl_block_address(data);
+    for (size_t i=0; i < h->k; i++)
+        state->data_blocks()[i] = reinterpret_cast<char *>(data_ptr + (i * block_size));
+    for (size_t i=0; i < h->m; i++) {
+        T block(erasuerl_new_block<T>(block_size));
+        state->code_blocks()[i] = erasuerl_block_address(block);
+    }
+    return state;
+}
+
+template <typename T>
+std::shared_ptr<coding_state> make_decode_state(erasuerl_handle* h, 
                                 std::vector<T>& user_blocks,
                                 std::size_t blocksize,
                                 std::size_t origsize)
 {
-    decode_state* state = new decode_state(h, blocksize, origsize);
+    auto state = std::make_shared<coding_state>(h, blocksize, origsize);
     for (size_t i=0; i < h->num_blocks; i++) {
         T& block(user_blocks.at(i));
         if (erasuerl_is_erasure(block)) 
