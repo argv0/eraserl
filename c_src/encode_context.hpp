@@ -102,8 +102,8 @@ private:
     std::size_t orig_size = 0;
     std::size_t newsize = 0;
     std::size_t blocksize = 0;
-    unique_array<char *> coding;
-    unique_array<char *> data;
+    std::vector<char *> coding;
+    std::vector<char *> data;
 };
 
 #endif // include guard

@@ -9,54 +9,15 @@ static const size_t DEFAULT_W = 4;
 static const size_t MAX_K = 255;
 static const size_t MAX_M = 255;
 
-
-template <typename T> bool erasuerl_is_erasure(const T& item) { return item != nullptr; }
-template <typename T> char *erasuerl_block_address(const T& item) { return nullptr; }
-template <typename T> size_t erasuerl_block_size(const T& item) { return 0; }
-template <typename T> T erasuerl_new_block(size_t size) { return new T[size]; }
-
-template <typename T>
-struct unique_array
-{
-    unique_array(std::size_t size) 
-      : size_(size),
-        data_(new T[size]) {}
-
-    unique_array(std::size_t size, const T& initval) 
-    : unique_array(size) 
-    {
-        std::fill(&data_[0], &data_[size], initval);
-    }
-
-    ~unique_array()
-    {
-        delete[] data_;
-    }
-
-    size_t size() const { return size_; }
-
-    T* data() const 
-    {
-        return data_;
-    }
-
-    operator T*() const 
-    {
-        return data_;
-    }
-
-    T& operator[](std::size_t index) const
-    {
-        return data_[index];
-    }
-    
-private:
-    unique_array(const unique_array&) = delete;
-    const unique_array& operator =(const unique_array&) = delete;
-    std::size_t size_;
-    T* data_;
-};
-
-
+template <typename T> 
+bool   erasuerl_is_erasure(const T& block);
+template <typename T> 
+char*  erasuerl_block_address(const T& block);
+template <typename T> 
+size_t erasuerl_block_size(const T& block);
+template <typename T> 
+T      erasuerl_new_block(size_t size);
+template <typename T> 
+void   erasuerl_free_block(T& block) {} 
 
 #endif // include guard

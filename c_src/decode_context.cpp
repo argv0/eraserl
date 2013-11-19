@@ -13,7 +13,7 @@ void decode_state::dump(const char *message) const
     printf("[ k=%d m=%d packetsize=%d\n  blocksize=%zu origsize=%zu codedsize=%zu\n"
            "  bloat=%.2f%% ]\n",
            handle_->k, handle_->m, handle_->packetsize, blocksize_,
-           coded_size, orig_size_, bloat);
+           orig_size_, coded_size, bloat);
     printf("%s\n" ,dashline);
     printf("%-5s%-10s%-20s%-15s%-10s\n", 
            "#", "type", "addr", "size", "was_erased");

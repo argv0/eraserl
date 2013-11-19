@@ -14,54 +14,49 @@ struct decode_data
         :
         data_(num_blocks, nullptr),
         erasures_(num_blocks, -1),
-        erased_(num_blocks, false) {}
+        erased_(num_blocks, false) 
+    {
+    }
 protected:
-    unique_array<char *> data_;
-    unique_array<int> erasures_;
-    unique_array<bool> erased_;
+    std::vector<char *> data_;
+    std::vector<int> erasures_;
+    std::vector<char> erased_;
 };
 
 struct decode_state : public decode_data
 {
     decode_state(erasuerl_handle *handle,
-                 std::size_t blocksize, std::size_t orig_size)
+                 std::size_t blocksize, 
+                 std::size_t orig_size)
         : decode_data(handle->num_blocks),
           handle_(handle),
           orig_size_(orig_size),
           blocksize_(blocksize)
-
     {
     }
 
-    ~decode_state() 
-    {
-        for (size_t i=0; i < handle_->num_blocks; i++)
-            if (erased_[i])
-                delete[] data_[i];
-    }
-
-    char **data_blocks() const { 
-        return data_;
+    char **data_blocks()  { 
+        return data_.data();
     }
 
     char *data_block(size_t idx) const { 
         return data_[idx];
     }
 
-    char **code_blocks() const { 
+    char **code_blocks() { 
         return &(data_[handle_->k]);
     }
-    
+
     std::size_t blocksize() const { 
         return blocksize_;
     }
 
-    int* erasures() const { 
-        return erasures_;
+    int* erasures()  { 
+        return erasures_.data();
     }
     
-    bool* erased() const { 
-        return erased_;
+    char* erased() { 
+        return erased_.data();
     }
 
     size_t original_size() const { 
@@ -81,14 +76,19 @@ struct decode_state : public decode_data
         erasures_[num_erased_++] = idx;
         erased_[idx] = true;
     }
-    
+
+    std::size_t num_erased() const { 
+        return num_erased_;
+    }
+
     void dump(const char *message=nullptr) const;
-    std::size_t num_erased_ = 0;
+
 
 private:
     erasuerl_handle *handle_ = nullptr;
     std::size_t orig_size_ = 0;
     std::size_t blocksize_ = 0;
+    std::size_t num_erased_ = 0;
 };
 
 inline bool decode(decode_state& ds)
@@ -115,7 +115,13 @@ struct decoder
             state_->data_block(i, erasuerl_block_address(block));
         }
     }
-    
+
+    ~decoder() 
+    {
+        for (size_t i=0; i < user_blocks_.size(); ++i)
+            if (state_->erased()[i])
+                erasuerl_free_block(user_blocks_[i]);
+    }
     void add_erasure(size_t idx) 
     {
         state_->erasure(idx);
@@ -124,6 +130,7 @@ struct decoder
     
     bool operator()() 
     {
+        if (!state_->num_erased()) return true;
         state_->dump("pre");
         auto ret =  ::decode(*state_);
         state_->dump("post");

@@ -17,8 +17,8 @@
 // under the License.
 //
 // -------------------------------------------------------------------
-#ifndef ERL_RS_NIFS_H_
-#define ERL_RS_NIFS_H_
+#ifndef __ERASUERL_NIFS_H_
+#define __ERASUERL_NIFS_H_
 
 extern "C" {
 
@@ -42,10 +42,9 @@ extern ERL_NIF_TERM ATOM_W;
 extern ERL_NIF_TERM ATOM_ORIG_SIZE;
 extern ERL_NIF_TERM ATOM_PACKETSIZE;
 extern ERL_NIF_TERM ATOM_BLOCKSIZE;
+extern ERL_NIF_TERM ATOM_NO_ERASURES;
 
 } // extern "C"
-
-
 
 template <typename Acc> 
 ERL_NIF_TERM fold(ErlNifEnv* env, ERL_NIF_TERM list,
@@ -61,6 +60,5 @@ ERL_NIF_TERM fold(ErlNifEnv* env, ERL_NIF_TERM list,
     }
     return ATOM_OK;
 }
-
 
 #endif // include guard
