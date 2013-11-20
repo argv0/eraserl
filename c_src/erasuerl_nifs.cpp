@@ -21,8 +21,11 @@
 #include <cstring>
 #include <cstdint>
 #include <cstdlib>
+#include <vector>
 #include "erasuerl.hpp"
 #include "erasuerl_nifs.h"
+
+typedef std::vector<ErlNifBinary> ebin_vector;
 
 static ErlNifResourceType* erasuerl_RESOURCE;
 
@@ -41,6 +44,7 @@ ERL_NIF_TERM ATOM_ORIG_SIZE;
 ERL_NIF_TERM ATOM_PACKETSIZE;
 ERL_NIF_TERM ATOM_BLOCKSIZE;
 ERL_NIF_TERM ATOM_NO_ERASURES;
+ERL_NIF_TERM ATOM_UNRECOVERABLE;
 
 static ErlNifFunc nif_funcs[] =
 {
@@ -120,10 +124,10 @@ ErlNifBinary erasuerl_new_block<ErlNifBinary>(size_t size)
 }
 
 template <>
-ErlNifBinary erasuerl_realloc_block<ErlNifBinary>(ErlNifBinary& item, size_t newsize) 
+void erasuerl_realloc_block<ErlNifBinary>(ErlNifBinary& item, size_t newsize) 
 {
     enif_realloc_binary(&item, newsize);        
-    return item;
+    //return item;
 }
 
 std::vector<ErlNifBinary> termlist_to_binvec(ErlNifEnv *env, ERL_NIF_TERM list)
@@ -146,16 +150,13 @@ ERL_NIF_TERM ebin_vector_to_termlist(ErlNifEnv *env,
     std::vector<ERL_NIF_TERM> result;
     std::size_t left = size;
     auto it = begin(vec);
-    do { 
-        result.push_back(enif_make_binary(env,const_cast<ErlNifBinary*>(&*it)));
-        ++it;
-        left -= blocksize;
-    }
-    while (left >= blocksize);
+    do 
+        result.push_back(enif_make_binary(env,const_cast<ErlNifBinary*>(&*(it++))));
+    while ((left -= blocksize) >= blocksize);
     if (left) 
         result.push_back(
             enif_make_sub_binary(
-                env, enif_make_binary(env, const_cast<ErlNifBinary *>(&*it)),
+                env, enif_make_binary(env, const_cast<ErlNifBinary *>(&*(it))),
                 0, left));
     return enif_make_list_from_array(env, result.data(), result.size());
 }
@@ -177,6 +178,8 @@ ERL_NIF_TERM erasuerl_decode(ErlNifEnv* env, int argc, const ERL_NIF_TERM argv[]
     auto state = make_decode_state(r->handle, data_blocks, 
                                    opts.blocksize,
                                    opts.orig_size);
+    if (state->num_erased() > r->handle->m)
+        return enif_make_tuple2(env, ATOM_ERROR, ATOM_UNRECOVERABLE);
     state->dump("decode");
     if (!state->num_erased())
         return enif_make_tuple2(env, ATOM_ERROR, ATOM_NO_ERASURES);
@@ -191,9 +194,7 @@ ERL_NIF_TERM erasuerl_encode(ErlNifEnv* env, int argc, const ERL_NIF_TERM argv[]
     if (!enif_get_resource(env,argv[0],erasuerl_RESOURCE,(void**)&r) ||
         !enif_inspect_binary(env, argv[1], &item))
         return enif_make_badarg(env);
-    size_t orig_size = item.size;
-    size_t newsize = round_up_size(item.size, r->handle);
-    enif_realloc_binary(&item, newsize);    
+
     auto state = make_encode_state(r->handle, item);
     encode(*state);
     state->dump("encode");
@@ -209,7 +210,7 @@ ERL_NIF_TERM erasuerl_encode(ErlNifEnv* env, int argc, const ERL_NIF_TERM argv[]
 
     ERL_NIF_TERM metadata = enif_make_list6(
         env,
-        enif_make_tuple2(env, ATOM_ORIG_SIZE, enif_make_int(env, orig_size)),
+        enif_make_tuple2(env, ATOM_ORIG_SIZE, enif_make_int(env, state->original_size())),
         enif_make_tuple2(env, ATOM_K, enif_make_int(env, r->handle->k)),
         enif_make_tuple2(env, ATOM_M, enif_make_int(env, r->handle->m)),
         enif_make_tuple2(env, ATOM_W, enif_make_int(env, r->handle->w)),
@@ -253,6 +254,7 @@ static int on_load(ErlNifEnv* env, void** priv_data, ERL_NIF_TERM load_info)
     ATOM(ATOM_PACKETSIZE, "packetsize");
     ATOM(ATOM_BLOCKSIZE, "blocksize");
     ATOM(ATOM_NO_ERASURES, "no_erasures");
+    ATOM(ATOM_UNRECOVERABLE, "unrecoverable");
     return 0;
 }
 

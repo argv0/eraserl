@@ -24,12 +24,13 @@ size_t erasuerl_block_size(const T& block);
 template <typename T> 
 T      erasuerl_new_block(size_t size);
 template <typename T> 
-T      erasuerl_realloc_block(T& block, size_t size);
+void   erasuerl_realloc_block(T& block, size_t size);
 template <typename T> 
 void   erasuerl_free_block(T& block) {} 
 
 bool decode(coding_state& state);
 bool encode(coding_state& state);
+
 
 
 inline size_t round_up_size(size_t origsize, erasuerl_handle *handle) 
@@ -60,12 +61,15 @@ inline bool encode(coding_state& state)
 }
 
 template <typename T>
-std::shared_ptr<coding_state> make_encode_state(erasuerl_handle* h, const T& data)
+std::shared_ptr<coding_state> make_encode_state(erasuerl_handle* h, T& data)
 {
     
-    size_t new_size = round_up_size(erasuerl_block_size(data), h);
+    size_t orig_size = erasuerl_block_size(data);
+    size_t new_size = round_up_size(orig_size, h);
     size_t block_size = new_size / h->k;
-    auto state = std::make_shared<coding_state>(h, block_size);
+    if (new_size != erasuerl_block_size(data))
+        erasuerl_realloc_block<T>(data, new_size);
+    auto state = std::make_shared<coding_state>(h, block_size, orig_size);
     char *data_ptr = erasuerl_block_address(data);
     for (size_t i=0; i < h->k; i++)
         state->data_blocks()[i] = reinterpret_cast<char *>(data_ptr + (i * block_size));
@@ -94,6 +98,5 @@ std::shared_ptr<coding_state> make_decode_state(erasuerl_handle* h,
     }
     return state;
 }
-
 
 #endif // include guard

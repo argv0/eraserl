@@ -54,6 +54,13 @@ no_erasures_test() ->
     {MD, KBins, MBins} = erasuerl:encode(EC, Bin), 
     ?assertEqual({error, no_erasures}, erasuerl:decode(EC, MD, KBins, MBins)).
 
+too_many_erasures_test() ->
+    {ok, EC} = erasuerl:new(5, 3, 4, 64),    
+    {ok, Bin} = file:read_file("/usr/share/dict/words"),    
+    {MD, KBins, MBins} = erasuerl:encode(EC, Bin), 
+    KBins2 = [<<>>, <<>>, <<>>, <<>>, hd(tl(KBins))],
+    ?assertEqual({error, unrecoverable}, erasuerl:decode(EC, MD, KBins2, MBins)).
+
 simple_data_erasure_test() ->
     {ok, EC} = erasuerl:new(11, 5, 4, 64),    
     {ok, Bin} = file:read_file("/usr/share/dict/words"),    
@@ -69,7 +76,7 @@ simple_coding_erasure_test() ->
     ?assertEqual(Bin, iolist_to_binary(erasuerl:decode(EC, MD, KBins, MBins2))).
 
 bolth_test() ->   
-    {ok, EC} = erasuerl:new(11, 5, 4, 64),    
+    {ok, EC} = erasuerl:new(10, 4, 4, 64),    
     {ok, Bin} = file:read_file("/usr/share/dict/words"),    
     {MD, KBins, MBins} = erasuerl:encode(EC, Bin),    
     KBins2 = [<<>>|tl(KBins)],

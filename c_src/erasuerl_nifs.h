@@ -20,7 +20,6 @@
 #ifndef __ERASUERL_NIFS_H_
 #define __ERASUERL_NIFS_H_
 
-#include <vector>
 
 extern "C" {
 
@@ -32,6 +31,7 @@ extern "C" {
 ERL_NIF_TERM erasuerl_new(ErlNifEnv*, int, const ERL_NIF_TERM[]);
 ERL_NIF_TERM erasuerl_encode(ErlNifEnv*, int, const ERL_NIF_TERM[]);
 ERL_NIF_TERM erasuerl_decode(ErlNifEnv*, int, const ERL_NIF_TERM[]);
+
 // Atoms (initialized in on_load)
 extern ERL_NIF_TERM ATOM_TRUE;
 extern ERL_NIF_TERM ATOM_FALSE;
@@ -46,6 +46,7 @@ extern ERL_NIF_TERM ATOM_ORIG_SIZE;
 extern ERL_NIF_TERM ATOM_PACKETSIZE;
 extern ERL_NIF_TERM ATOM_BLOCKSIZE;
 extern ERL_NIF_TERM ATOM_NO_ERASURES;
+extern ERL_NIF_TERM ATOM_UNRECOVERABLE;
 
 } // extern "C"
 
