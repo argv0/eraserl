@@ -20,17 +20,17 @@
 #ifndef __ERASUERL_NIFS_H_
 #define __ERASUERL_NIFS_H_
 
-
 extern "C" {
 
 #include "erl_nif_compat.h"
 
-#define ATOM(Id, Value) { Id = enif_make_atom(env, Value); }
+#define ATOM(Id, Value)                                                        \
+    { Id = enif_make_atom(env, Value); }
 
 // exported NIF function
-ERL_NIF_TERM erasuerl_new(ErlNifEnv*, int, const ERL_NIF_TERM[]);
-ERL_NIF_TERM erasuerl_encode(ErlNifEnv*, int, const ERL_NIF_TERM[]);
-ERL_NIF_TERM erasuerl_decode(ErlNifEnv*, int, const ERL_NIF_TERM[]);
+ERL_NIF_TERM erasuerl_new(ErlNifEnv *, int, const ERL_NIF_TERM[]);
+ERL_NIF_TERM erasuerl_encode(ErlNifEnv *, int, const ERL_NIF_TERM[]);
+ERL_NIF_TERM erasuerl_decode(ErlNifEnv *, int, const ERL_NIF_TERM[]);
 
 // Atoms (initialized in on_load)
 extern ERL_NIF_TERM ATOM_TRUE;
@@ -50,14 +50,12 @@ extern ERL_NIF_TERM ATOM_UNRECOVERABLE;
 
 } // extern "C"
 
-template <typename Acc> 
-ERL_NIF_TERM fold(ErlNifEnv* env, ERL_NIF_TERM list,
-                  ERL_NIF_TERM(*fun)(ErlNifEnv*, ERL_NIF_TERM, Acc&),
-                  Acc& acc)
-{
+template <typename Acc>
+ERL_NIF_TERM fold(ErlNifEnv *env, ERL_NIF_TERM list,
+                  ERL_NIF_TERM (*fun)(ErlNifEnv *, ERL_NIF_TERM, Acc &),
+                  Acc &acc) {
     ERL_NIF_TERM head, tail = list;
-    while (enif_get_list_cell(env, tail, &head, &tail))
-    {
+    while (enif_get_list_cell(env, tail, &head, &tail)) {
         ERL_NIF_TERM result = fun(env, head, acc);
         if (result != ATOM_OK)
             return result;
