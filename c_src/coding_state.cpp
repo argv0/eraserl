@@ -1,4 +1,4 @@
-#include "decode_context.hpp"
+#include "coding_state.hpp"
 
 void coding_state::dump(const char *message) const
 {
@@ -10,7 +10,7 @@ void coding_state::dump(const char *message) const
     static const char *header_fmt = "%-5s%-10s%-20s%-15s%-10s\n";
     static const char *table_fmt =  "%-5d%-10s%-20p%-15zu%-10s\n";
     printf("dumping coding_state: ");
-    if (!message)
+    if (message)
         printf("(%s)", message);
     printf("\n%s", dashline);
     size_t coded_size = (blocksize_ * handle_->num_blocks);

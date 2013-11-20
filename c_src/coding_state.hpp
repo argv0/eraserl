@@ -3,8 +3,8 @@
 
 #include <cstring>
 #include <vector>
+#include "erasuerl_handle.hpp"
 
-class erasuerl_handle;
 
 struct coding_state 
 {
