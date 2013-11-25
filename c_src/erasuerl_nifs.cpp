@@ -25,7 +25,7 @@
 #include "erasuerl.hpp"
 #include "erasuerl_nifs.h"
 
-typedef std::vector<ErlNifBinary> ebin_vector;
+typedef std::vector<ErlNifBinary> nif_bin_vector;
 
 static ErlNifResourceType *erasuerl_RESOURCE;
 
@@ -124,7 +124,6 @@ template <> ErlNifBinary erasuerl_new_block<ErlNifBinary>(size_t size) {
 template <>
 void erasuerl_realloc_block<ErlNifBinary>(ErlNifBinary &item, size_t newsize) {
     enif_realloc_binary(&item, newsize);
-    // return item;
 }
 
 std::vector<ErlNifBinary> termlist_to_binvec(ErlNifEnv *env,
@@ -139,7 +138,7 @@ std::vector<ErlNifBinary> termlist_to_binvec(ErlNifEnv *env,
     return binvec;
 }
 
-ERL_NIF_TERM ebin_vector_to_termlist(ErlNifEnv *env, const ebin_vector &vec,
+ERL_NIF_TERM nif_bin_vector_to_termlist(ErlNifEnv *env, const nif_bin_vector &vec,
                                      std::size_t blocksize, std::size_t size) {
     std::vector<ERL_NIF_TERM> result;
     std::size_t left = size;
@@ -165,8 +164,8 @@ ERL_NIF_TERM erasuerl_decode(ErlNifEnv *env, int argc,
 
     decode_options opts;
     fold(env, argv[1], parse_decode_option, opts);
-    ebin_vector data_blocks(termlist_to_binvec(env, argv[2]));
-    ebin_vector code_blocks(termlist_to_binvec(env, argv[3]));
+    nif_bin_vector data_blocks(termlist_to_binvec(env, argv[2]));
+    nif_bin_vector code_blocks(termlist_to_binvec(env, argv[3]));
     data_blocks.insert(end(data_blocks), begin(code_blocks), end(code_blocks));
     auto state = make_decode_state(r->handle, data_blocks, opts.blocksize,
                                    opts.orig_size);
@@ -177,7 +176,7 @@ ERL_NIF_TERM erasuerl_decode(ErlNifEnv *env, int argc,
         return enif_make_tuple2(env, ATOM_ERROR, ATOM_NO_ERASURES);
     if (!decode(*state))
         return ATOM_ERROR;
-    return ebin_vector_to_termlist(env, data_blocks, opts.blocksize,
+    return nif_bin_vector_to_termlist(env, data_blocks, opts.blocksize,
                                    opts.orig_size);
 }
 
@@ -192,7 +191,7 @@ ERL_NIF_TERM erasuerl_encode(ErlNifEnv *env, int argc,
     auto state = make_encode_state(r->handle, item);
     encode(*state);
     state->dump("encode");
-    ebin_vector data_blocks, code_blocks;
+    nif_bin_vector data_blocks, code_blocks;
     for (size_t i = 0; i < r->handle->k; i++)
         data_blocks.push_back(
             { state->blocksize(),
@@ -214,9 +213,9 @@ ERL_NIF_TERM erasuerl_encode(ErlNifEnv *env, int argc,
                          enif_make_int(env, state->blocksize())));
     return enif_make_tuple3(
         env, metadata,
-        ebin_vector_to_termlist(env, data_blocks, state->blocksize(),
+        nif_bin_vector_to_termlist(env, data_blocks, state->blocksize(),
                                 state->blocksize() * r->handle->k),
-        ebin_vector_to_termlist(env, code_blocks, state->blocksize(),
+        nif_bin_vector_to_termlist(env, code_blocks, state->blocksize(),
                                 state->blocksize() * (r->handle->m)));
 }
 
