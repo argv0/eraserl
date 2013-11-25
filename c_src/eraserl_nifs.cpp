@@ -17,7 +17,6 @@
 // under the License.
 //
 // -------------------------------------------------------------------
-
 #include <cstring>
 #include <cstdint>
 #include <cstdlib>
