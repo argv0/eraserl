@@ -17,7 +17,7 @@
 %%
 %% -------------------------------------------------------------------
 -module(erasuerl).
--export([new/4, encode/2, decode/4]).
+-export([new/4, encode/2, decode/4, stats/0]).
 -on_load(init/0).
 
 -include_lib("eunit/include/eunit.hrl").
@@ -46,6 +46,9 @@ encode(_EC, _Bin) ->
     ?nif_stub.
 
 decode(_EC, _Meta, _KList, _MList) ->
+    ?nif_stub.
+
+stats() ->
     ?nif_stub.
 
 no_erasures_test() ->
@@ -81,4 +84,5 @@ bolth_test() ->
     {MD, KBins, MBins} = erasuerl:encode(EC, Bin),    
     KBins2 = [<<>>|tl(KBins)],
     MBins2 = [<<>>|tl(MBins)],    
-    ?assertEqual(Bin, iolist_to_binary(erasuerl:decode(EC, MD, KBins2, MBins2))).    
+    ?assertEqual(Bin, iolist_to_binary(erasuerl:decode(EC, MD, KBins2, MBins2))).
+
