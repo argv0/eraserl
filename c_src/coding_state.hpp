@@ -3,10 +3,10 @@
 
 #include <cstring>
 #include <vector>
-#include "erasuerl_handle.hpp"
+#include "eraserl_handle.hpp"
 
 struct coding_state {
-    coding_state(erasuerl_handle *handle, std::size_t blocksize,
+    coding_state(eraserl_handle *handle, std::size_t blocksize,
                  std::size_t orig_size = 0)
         : handle_(handle), data_(handle->num_blocks, nullptr),
           erasures_(handle->num_blocks, -1), erased_(handle->num_blocks, false),
@@ -26,7 +26,7 @@ struct coding_state {
 
     size_t original_size() const { return orig_size_; }
 
-    erasuerl_handle *handle() const { return handle_; }
+    eraserl_handle *handle() const { return handle_; }
     void data_block(size_t idx, char *block) { data_[idx] = block; }
 
     void erasure(size_t idx) {
@@ -39,7 +39,7 @@ struct coding_state {
     void dump(const char *message = nullptr) const;
 
   private:
-    erasuerl_handle *handle_ = nullptr;
+    eraserl_handle *handle_ = nullptr;
     std::vector<char *> data_;
     std::vector<int> erasures_;
     std::vector<char> erased_;

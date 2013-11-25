@@ -16,7 +16,7 @@
 %% under the License.
 %%
 %% -------------------------------------------------------------------
--module(erasuerl).
+-module(eraserl).
 -export([new/4, encode/2, decode/4, stats/0]).
 -on_load(init/0).
 
@@ -52,37 +52,37 @@ stats() ->
     ?nif_stub.
 
 no_erasures_test() ->
-    {ok, EC} = erasuerl:new(11, 5, 4, 64),    
+    {ok, EC} = eraserl:new(11, 5, 4, 64),    
     {ok, Bin} = file:read_file("/usr/share/dict/words"),    
-    {MD, KBins, MBins} = erasuerl:encode(EC, Bin), 
-    ?assertEqual({error, no_erasures}, erasuerl:decode(EC, MD, KBins, MBins)).
+    {MD, KBins, MBins} = eraserl:encode(EC, Bin), 
+    ?assertEqual({error, no_erasures}, eraserl:decode(EC, MD, KBins, MBins)).
 
 too_many_erasures_test() ->
-    {ok, EC} = erasuerl:new(5, 3, 4, 64),    
+    {ok, EC} = eraserl:new(5, 3, 4, 64),    
     {ok, Bin} = file:read_file("/usr/share/dict/words"),    
-    {MD, KBins, MBins} = erasuerl:encode(EC, Bin), 
+    {MD, KBins, MBins} = eraserl:encode(EC, Bin), 
     KBins2 = [<<>>, <<>>, <<>>, <<>>, hd(tl(KBins))],
-    ?assertEqual({error, unrecoverable}, erasuerl:decode(EC, MD, KBins2, MBins)).
+    ?assertEqual({error, unrecoverable}, eraserl:decode(EC, MD, KBins2, MBins)).
 
 simple_data_erasure_test() ->
-    {ok, EC} = erasuerl:new(11, 5, 4, 64),    
+    {ok, EC} = eraserl:new(11, 5, 4, 64),    
     {ok, Bin} = file:read_file("/usr/share/dict/words"),    
-    {MD, KBins, MBins} = erasuerl:encode(EC, Bin), 
+    {MD, KBins, MBins} = eraserl:encode(EC, Bin), 
     KBins2 = [<<>>|tl(KBins)],
-    ?assertEqual(Bin, iolist_to_binary(erasuerl:decode(EC, MD, KBins2, MBins))).
+    ?assertEqual(Bin, iolist_to_binary(eraserl:decode(EC, MD, KBins2, MBins))).
 
 simple_coding_erasure_test() ->
-    {ok, EC} = erasuerl:new(11, 5, 4, 64),    
+    {ok, EC} = eraserl:new(11, 5, 4, 64),    
     {ok, Bin} = file:read_file("/usr/share/dict/words"),    
-    {MD, KBins, MBins} = erasuerl:encode(EC, Bin),    
+    {MD, KBins, MBins} = eraserl:encode(EC, Bin),    
     MBins2 = [<<>>|tl(MBins)],    
-    ?assertEqual(Bin, iolist_to_binary(erasuerl:decode(EC, MD, KBins, MBins2))).
+    ?assertEqual(Bin, iolist_to_binary(eraserl:decode(EC, MD, KBins, MBins2))).
 
 bolth_test() ->   
-    {ok, EC} = erasuerl:new(10, 4, 4, 64),    
+    {ok, EC} = eraserl:new(10, 4, 4, 64),    
     {ok, Bin} = file:read_file("/usr/share/dict/words"),    
-    {MD, KBins, MBins} = erasuerl:encode(EC, Bin),    
+    {MD, KBins, MBins} = eraserl:encode(EC, Bin),    
     KBins2 = [<<>>|tl(KBins)],
     MBins2 = [<<>>|tl(MBins)],    
-    ?assertEqual(Bin, iolist_to_binary(erasuerl:decode(EC, MD, KBins2, MBins2))).
+    ?assertEqual(Bin, iolist_to_binary(eraserl:decode(EC, MD, KBins2, MBins2))).
 

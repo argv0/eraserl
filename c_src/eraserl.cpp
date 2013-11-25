@@ -1,6 +1,6 @@
-#include "erasuerl.hpp"
+#include "eraserl.hpp"
 
-size_t round_up_size(size_t origsize, erasuerl_handle *handle) {
+size_t round_up_size(size_t origsize, eraserl_handle *handle) {
     size_t newsize = origsize;
     size_t packetsize = handle->packetsize;
     size_t k = handle->k;

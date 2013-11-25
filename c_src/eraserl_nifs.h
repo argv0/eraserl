@@ -17,8 +17,8 @@
 // under the License.
 //
 // -------------------------------------------------------------------
-#ifndef __ERASUERL_NIFS_H_
-#define __ERASUERL_NIFS_H_
+#ifndef __ERASERL_NIFS_H_
+#define __ERASERL_NIFS_H_
 
 extern "C" {
 
@@ -28,10 +28,10 @@ extern "C" {
     { Id = enif_make_atom(env, Value); }
 
 // exported NIF function
-ERL_NIF_TERM erasuerl_new(ErlNifEnv *, int, const ERL_NIF_TERM[]);
-ERL_NIF_TERM erasuerl_encode(ErlNifEnv *, int, const ERL_NIF_TERM[]);
-ERL_NIF_TERM erasuerl_decode(ErlNifEnv *, int, const ERL_NIF_TERM[]);
-ERL_NIF_TERM erasuerl_stats(ErlNifEnv *, int, const ERL_NIF_TERM[]);
+ERL_NIF_TERM eraserl_new(ErlNifEnv *, int, const ERL_NIF_TERM[]);
+ERL_NIF_TERM eraserl_encode(ErlNifEnv *, int, const ERL_NIF_TERM[]);
+ERL_NIF_TERM eraserl_decode(ErlNifEnv *, int, const ERL_NIF_TERM[]);
+ERL_NIF_TERM eraserl_stats(ErlNifEnv *, int, const ERL_NIF_TERM[]);
 
 // Atoms (initialized in on_load)
 extern ERL_NIF_TERM ATOM_TRUE;
