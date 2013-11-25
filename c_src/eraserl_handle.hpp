@@ -1,5 +1,5 @@
-#ifndef __ERASUERL_HANDLE_HPP
-#define __ERASUERL_HANDLE_HPP
+#ifndef __ERASERL_HANDLE_HPP
+#define __ERASERL_HANDLE_HPP
 
 #include <cstring>
 
@@ -23,7 +23,7 @@ struct size_info {
     std::size_t block_size = 0;
 };
 
-class erasuerl_handle {
+class eraserl_handle {
   public:
     /* ec params */
     int k; // = 9;
@@ -32,16 +32,16 @@ class erasuerl_handle {
     int packetsize;
     size_t num_blocks;
 
-    erasuerl_handle(int k, int m, int w, int packetsize)
+    eraserl_handle(int k, int m, int w, int packetsize)
         : k(k), m(m), w(w), packetsize(packetsize), num_blocks(k + m),
           matrix(cauchy_good_general_coding_matrix(k, m, w)),
           bitmatrix(jerasure_matrix_to_bitmatrix(k, m, w, matrix)),
           schedule(jerasure_smart_bitmatrix_to_schedule(k, m, w, bitmatrix)) {}
 
-    erasuerl_handle(const decode_options &opts)
-        : erasuerl_handle(opts.k, opts.m, opts.w, opts.packetsize) {}
+    eraserl_handle(const decode_options &opts)
+        : eraserl_handle(opts.k, opts.m, opts.w, opts.packetsize) {}
 
-    ~erasuerl_handle() {
+    ~eraserl_handle() {
         if (matrix)
             free(matrix);
         if (bitmatrix)
