@@ -45,10 +45,14 @@ ERL_NIF_TERM ATOM_PACKETSIZE;
 ERL_NIF_TERM ATOM_BLOCKSIZE;
 ERL_NIF_TERM ATOM_NO_ERASURES;
 ERL_NIF_TERM ATOM_UNRECOVERABLE;
+ERL_NIF_TERM ATOM_XOR_BYTES;
+ERL_NIF_TERM ATOM_GF_BYTES;
+ERL_NIF_TERM ATOM_COPIED_BYTES;
 
 static ErlNifFunc nif_funcs[] = { { "new", 4, erasuerl_new },
                                   { "encode", 2, erasuerl_encode },
-                                  { "decode", 4, erasuerl_decode } };
+                                  { "decode", 4, erasuerl_decode },
+                                  { "stats", 0, erasuerl_stats } };
 
 struct erasuerl_res {
     erasuerl_handle *handle;
@@ -67,6 +71,15 @@ ERL_NIF_TERM erasuerl_new(ErlNifEnv *env, int argc, const ERL_NIF_TERM argv[]) {
     ERL_NIF_TERM result = enif_make_resource(env, r);
     enif_release_resource_compat(env, r);
     return enif_make_tuple2(env, ATOM_OK, result);
+}
+
+ERL_NIF_TERM erasuerl_stats(ErlNifEnv *env, int argc, const ERL_NIF_TERM argv[]) {
+    double stats[3];
+    jerasure_get_stats(&stats[0]);
+    return enif_make_tuple3(env, 
+                            enif_make_tuple2(env, ATOM_XOR_BYTES, enif_make_uint64(env, stats[0])),
+                            enif_make_tuple2(env, ATOM_GF_BYTES, enif_make_uint64(env, stats[1])),
+                            enif_make_tuple2(env, ATOM_COPIED_BYTES, enif_make_uint64(env, stats[2])));
 }
 
 ERL_NIF_TERM parse_decode_option(ErlNifEnv *env, ERL_NIF_TERM item,
@@ -234,6 +247,10 @@ static int on_load(ErlNifEnv *env, void **priv_data, ERL_NIF_TERM load_info) {
     ATOM(ATOM_BLOCKSIZE, "blocksize");
     ATOM(ATOM_NO_ERASURES, "no_erasures");
     ATOM(ATOM_UNRECOVERABLE, "unrecoverable");
+    ATOM(ATOM_XOR_BYTES, "xor_bytes");
+    ATOM(ATOM_GF_BYTES, "gf_bytes");
+    ATOM(ATOM_COPIED_BYTES, "copied_bytes");
+
     return 0;
 }
 
